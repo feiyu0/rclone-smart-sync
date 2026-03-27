@@ -25,7 +25,7 @@ COPY supervisord.conf /app/supervisord.conf
 COPY requirements.txt /app/requirements.txt
 
 # 安装 Python 依赖
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 创建目录
 RUN mkdir -p /app/data /app/logs
