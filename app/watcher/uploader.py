@@ -1,71 +1,49 @@
 import os
 import subprocess
 from app.config import get_config
+from app.watcher.rclone_config import generate_config
 
-# 👉 远程路径（后面会改成WebUI配置）
-REMOTE = "webdav:sync"
+
+def get_remote():
+    path = get_config("remote_path", "sync")
+    return f"webdav:{path}"
 
 
 def should_upload(local_path):
-    """
-    核心判断逻辑：
-    同名文件存在 → 比较大小
-    """
-
     filename = os.path.basename(local_path)
+    remote = get_remote()
 
-    # 👉 查询远程是否存在
-    cmd = [
-        "rclone", "lsjson",
-        f"{REMOTE}/{filename}"
-    ]
+    cmd = ["rclone", "lsjson", f"{remote}/{filename}"]
 
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
-        # 👉 不存在 → 直接上传
-        if result.returncode != 0 or result.stdout.strip() == "":
-            print(f"[UPLOAD] remote not exists → upload {filename}")
-            return True
+    if result.returncode != 0 or result.stdout.strip() == "":
+        print(f"[UPLOAD] not exist → {filename}")
+        return True
 
-        import json
-        remote_info = json.loads(result.stdout)[0]
+    import json
+    remote_info = json.loads(result.stdout)[0]
 
-        remote_size = remote_info["Size"]
-        local_size = os.path.getsize(local_path)
+    remote_size = remote_info["Size"]
+    local_size = os.path.getsize(local_path)
 
-        print(f"[CHECK] local={local_size} remote={remote_size}")
+    if remote_size != local_size:
+        print("[UPLOAD] size diff")
+        return True
 
-        # 👉 策略：只要不一样就上传
-        if local_size != remote_size:
-            print("[UPLOAD] size different → upload")
-            return True
-
-        print("[SKIP] same file")
-        return False
-
-    except Exception as e:
-        print(f"[ERROR] check remote failed {e}")
-        return True  # 出错时保守上传
+    print("[SKIP] same file")
+    return False
 
 
 def upload_file(local_path):
-    """
-    执行上传
-    """
+    generate_config()  # 👉 每次上传前生成配置
 
-    filename = os.path.basename(local_path)
+    remote = get_remote()
 
-    cmd = [
+    print(f"[UPLOAD] {local_path}")
+
+    subprocess.run([
         "rclone", "copy",
         local_path,
-        REMOTE,
-        "--ignore-existing",
-        "--progress"
-    ]
-
-    print(f"[RCLONE] uploading {filename}")
-
-    subprocess.run(cmd)
-
-    print(f"[DONE] {filename}")
+        remote
+    ])
