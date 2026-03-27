@@ -65,7 +65,10 @@ def process_file(path):
     print(f"[READY] {path} size={size}")
 
     # 🚧 这里后面会接入上传逻辑
+from app.watcher.uploader import should_upload, upload_file
 
+if should_upload(path):
+    upload_file(path)
     checking_files.pop(path, None)
 
 
