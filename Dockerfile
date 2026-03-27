@@ -9,10 +9,8 @@ RUN apk add --no-cache \
     tzdata \
     sqlite \
     supervisor \
-    inotify-tools
-
-# 安装 rclone
-RUN curl https://rclone.org/install.sh | bash
+    inotify-tools \
+    rclone
 
 # 设置工作目录
 WORKDIR /app
