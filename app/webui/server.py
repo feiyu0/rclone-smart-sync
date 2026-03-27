@@ -12,7 +12,34 @@ PORT = int(os.environ.get("WEBUI_PORT", 8080))
 @app.route("/")
 def index():
     return """
-    <h1>Rclone Smart Sync</h1>
+<h1>Rclone Smart Sync</h1>
+
+<p>服务运行中 ✅</p>
+
+<h3>稳定时间设置（秒）</h3>
+<input id="sec" type="number" value="10"/>
+<button onclick="save()">保存</button>
+
+<script>
+async function load(){
+    let res = await fetch('/api/config')
+    let data = await res.json()
+    document.getElementById('sec').value = data.stable_seconds
+}
+
+async function save(){
+    let v = document.getElementById('sec').value
+    await fetch('/api/config', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({stable_seconds: v})
+    })
+    alert('已保存')
+}
+
+load()
+</script>
+"""
     <p>服务运行中 ✅</p>
     <p>后续这里会加入完整管理界面</p>
     """
