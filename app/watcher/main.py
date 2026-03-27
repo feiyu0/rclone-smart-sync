@@ -6,7 +6,10 @@ from threading import Thread
 WATCH_ROOT = os.environ.get("WATCH_ROOT", "/data")
 
 # 默认稳定时间（后面会接入WebUI）
-STABLE_SECONDS = 10
+from app.config import get_config
+
+def get_stable_seconds():
+    return get_config("stable_seconds", 10)
 
 # 正在检测的文件
 checking_files = {}
@@ -18,7 +21,9 @@ def is_file_stable(path):
         last_size = -1
         stable_count = 0
 
-        while stable_count < STABLE_SECONDS:
+        stable_seconds = get_stable_seconds()
+
+        while stable_count < stable_seconds:
             if not os.path.exists(path):
                 return False
 
