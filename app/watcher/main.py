@@ -3,24 +3,21 @@ import time
 import pyinotify
 from threading import Thread
 
-WATCH_ROOT = os.environ.get("WATCH_ROOT", "/data")
-
-# 默认稳定时间（后面会接入WebUI）
 from app.config import get_config
 
-def get_stable_seconds():
-    return get_config("stable_seconds", 10)
+WATCH_ROOT = os.environ.get("WATCH_ROOT", "/data")
 
-# 正在检测的文件
 checking_files = {}
 
 
+def get_stable_seconds():
+    return int(get_config("stable_seconds", 10))
+
+
 def is_file_stable(path):
-    """检测文件是否稳定"""
     try:
         last_size = -1
         stable_count = 0
-
         stable_seconds = get_stable_seconds()
 
         while stable_count < stable_seconds:
@@ -45,30 +42,30 @@ def is_file_stable(path):
 
 
 def process_file(path):
-    """后台处理文件"""
     if path in checking_files:
         return
 
     checking_files[path] = True
 
-    print(f"[CHECK] start checking {path}")
+    print(f"[CHECK] {path}")
 
     stable = is_file_stable(path)
 
     if not stable:
-        print(f"[SKIP] not stable {path}")
+        print(f"[SKIP] unstable {path}")
         checking_files.pop(path, None)
         return
 
-    size = os.path.getsize(path)
+    try:
+        # 👉 延迟导入（关键修复点！！！）
+        from app.watcher.uploader import should_upload, upload_file
 
-    print(f"[READY] {path} size={size}")
+        if should_upload(path):
+            upload_file(path)
 
-    # 🚧 这里后面会接入上传逻辑
-from app.watcher.uploader import should_upload, upload_file
+    except Exception as e:
+        print(f"[ERROR] upload failed: {e}")
 
-if should_upload(path):
-    upload_file(path)
     checking_files.pop(path, None)
 
 
@@ -91,7 +88,6 @@ class EventHandler(pyinotify.ProcessEvent):
 
         print(f"[EVENT] {path}")
 
-        # 开线程处理（避免阻塞监听）
         Thread(target=process_file, args=(path,)).start()
 
 
