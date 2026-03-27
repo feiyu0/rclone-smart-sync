@@ -1,4 +1,4 @@
-FROM alpine:3.19
+FROM python:3.11-alpine
 
 # 安装基础依赖
 RUN apk add --no-cache \
