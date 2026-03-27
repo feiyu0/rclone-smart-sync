@@ -10,7 +10,11 @@ RUN apk add --no-cache \
     sqlite \
     supervisor \
     inotify-tools \
-    rclone
+    rclone \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev
 
 # 设置工作目录
 WORKDIR /app
