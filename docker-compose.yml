@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  rclone-sync:
+    build: .
+    image: ghcr.io/${USERNAME:-local}/rclone-sync:${TAG:-latest}
+    container_name: rclone-sync
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /path/to/media:/data:ro
+      - ./config:/config
+      - ./logs:/logs
+    environment:
+      - TZ=UTC
+      - SECRET_KEY=change-me-in-production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - sync-network
+
+networks:
+  sync-network:
+    driver: bridge
