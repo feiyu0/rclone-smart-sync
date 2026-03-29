@@ -53,21 +53,22 @@ def enqueue(local_path, remote_path, file_size=0, priority=10, source="monitor")
 
 
 def get_queue_snapshot():
-    items = []
     with _active_lock:
-        for key, info in _active_uploads.items():
-            items.append({
-                "name": os.path.basename(key),
-                "local_path": key,
-                "progress": info.get("progress", 0),
-                "file_size": info.get("file_size", 0),
-                "transferred": info.get("transferred", 0),
-                "source": info.get("source", ""),
+        uploading = [
+            {
+                "name": os.path.basename(k),
+                "local_path": k,
+                "progress": v.get("progress", 0),
+                "file_size": v.get("file_size", 0),
+                "transferred": v.get("transferred", 0),
+                "source": v.get("source", ""),
                 "status": "uploading",
-            })
+            }
+            for k, v in _active_uploads.items()
+        ]
 
-    waiting = []
     tmp = []
+    waiting = []
     while not _task_queue.empty():
         try:
             item = _task_queue.get_nowait()
@@ -84,9 +85,12 @@ def get_queue_snapshot():
         except queue.Empty:
             break
     for item in tmp:
-        _task_queue.put(item)
+        try:
+            _task_queue.put_nowait(item)
+        except queue.Full:
+            pass
 
-    return {"uploading": items, "waiting": waiting}
+    return {"uploading": uploading, "waiting": waiting}
 
 
 def start(num_workers=None):
@@ -116,10 +120,8 @@ def _worker_loop(worker_id):
             _, task = _task_queue.get(timeout=2)
         except queue.Empty:
             continue
-
         _do_upload(task, worker_id)
         _task_queue.task_done()
-
         with _in_queue_lock:
             _in_queue_set.discard(task.local_path)
 
@@ -147,12 +149,8 @@ def _do_upload(task, worker_id):
 
     logger.info(f"[W{worker_id}] Uploading: {name} ({_fmt_size(file_size)})")
 
-    rclone_conf = _build_rclone_config(cfg)
-    conf_path = f"/tmp/rclone_worker_{worker_id}.conf"
-    with open(conf_path, "w") as f:
-        f.write(rclone_conf)
-
-    timeout = cfg.get("single_file_timeout_minutes", 60) * 60
+    conf_path = _write_rclone_config(cfg, worker_id)
+    timeout_secs = cfg.get("single_file_timeout_minutes", 60) * 60
     max_retries = cfg.get("retry_count", 3)
 
     success = False
@@ -163,9 +161,9 @@ def _do_upload(task, worker_id):
                 "--config", conf_path,
                 "--retries", "1",
                 "--low-level-retries", "3",
-                "--stats", "2s",
+                "--stats", "1s",
                 "--stats-one-line",
-                "--progress",
+                "--use-json-log",
                 local,
                 f"webdav_target:{remote}",
             ]
@@ -188,20 +186,25 @@ def _do_upload(task, worker_id):
                 if not line and proc.poll() is not None:
                     break
                 if line:
-                    _parse_progress(local, line.strip(), file_size)
-                if time.time() - start_time > timeout:
+                    _parse_json_progress(local, line.strip(), file_size)
+                if time.time() - start_time > timeout_secs:
                     proc.kill()
-                    raise TimeoutError(f"Timeout after {timeout}s")
+                    raise TimeoutError(f"Timeout after {timeout_secs}s")
 
             rc = proc.returncode
             if rc == 0:
                 success = True
                 break
             else:
-                logger.warning(f"[W{worker_id}] Attempt {attempt}/{max_retries} failed (rc={rc}): {name}")
+                logger.warning(
+                    f"[W{worker_id}] Attempt {attempt}/{max_retries} failed (rc={rc}): {name}"
+                )
                 if attempt < max_retries:
                     time.sleep(5 * attempt)
 
+        except TimeoutError as e:
+            logger.error(f"[W{worker_id}] {e}: {name}")
+            break
         except Exception as e:
             logger.error(f"[W{worker_id}] Attempt {attempt}/{max_retries} error: {e}")
             if attempt < max_retries:
@@ -224,51 +227,54 @@ def _do_upload(task, worker_id):
         pass
 
 
-def _parse_progress(local_path, line, total_size):
+def _parse_json_progress(local_path, line, total_size):
+    import json
     try:
-        if "Transferred:" in line and "/" in line:
-            parts = line.split()
-            for i, p in enumerate(parts):
-                if p == "Transferred:":
-                    transferred_str = parts[i + 1] if i + 1 < len(parts) else "0"
-                    transferred = _parse_size_str(transferred_str)
-                    progress = min(int(transferred / total_size * 100), 99) if total_size > 0 else 0
-                    with _active_lock:
-                        if local_path in _active_uploads:
-                            _active_uploads[local_path]["transferred"] = transferred
-                            _active_uploads[local_path]["progress"] = progress
-                    break
+        data = json.loads(line)
+        stats = data.get("stats", {})
+        transferred = stats.get("bytes", 0)
+        if total_size > 0 and transferred > 0:
+            progress = min(int(transferred / total_size * 100), 99)
+            with _active_lock:
+                if local_path in _active_uploads:
+                    _active_uploads[local_path]["transferred"] = transferred
+                    _active_uploads[local_path]["progress"] = progress
     except Exception:
         pass
 
 
-def _parse_size_str(s):
-    s = s.strip().upper()
-    units = {"B": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4}
-    for suffix, mult in units.items():
-        if s.endswith(suffix):
-            try:
-                return float(s[:-1]) * mult
-            except Exception:
-                return 0
-    try:
-        return float(s)
-    except Exception:
-        return 0
-
-
-def _build_rclone_config(cfg):
-    return f"""[webdav_target]
+def _write_rclone_config(cfg, worker_id):
+    password = cfg.get("webdav_password", "")
+    obscured = _obscure_password(password)
+    conf = f"""[webdav_target]
 type = webdav
 url = {cfg.get('webdav_url', '')}
 vendor = other
 user = {cfg.get('webdav_username', '')}
-pass = {cfg.get('webdav_password', '')}
+pass = {obscured}
 """
+    conf_path = f"/tmp/rclone_worker_{worker_id}.conf"
+    with open(conf_path, "w") as f:
+        f.write(conf)
+    os.chmod(conf_path, 0o600)
+    return conf_path
+
+
+def _obscure_password(password):
+    if not password:
+        return ""
+    try:
+        result = subprocess.run(
+            ["rclone", "obscure", password],
+            capture_output=True, text=True, timeout=5
+        )
+        return result.stdout.strip()
+    except Exception:
+        return password
 
 
 def _fmt_size(b):
-    if b is None:
+    if not b:
         return "0 B"
     for unit in ["B", "KB", "MB", "GB", "TB"]:
         if b < 1024:
