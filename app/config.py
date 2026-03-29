@@ -1,8 +1,6 @@
 import json
-import os
 import threading
-
-CONFIG_PATH = "/config/config.json"
+from app import database
 
 DEFAULT_CONFIG = {
     "webdav_url": "",
@@ -31,39 +29,41 @@ DEFAULT_CONFIG = {
     "log_retain_days": 30
 }
 
-_config = {}
-_lock = threading.Lock()
+_config_cache = {}
+_cache_lock = threading.Lock()
 
 
 def load():
-    global _config
-    with _lock:
-        if os.path.exists(CONFIG_PATH):
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                saved = json.load(f)
-            merged = DEFAULT_CONFIG.copy()
-            merged.update(saved)
-            _config = merged
-        else:
-            _config = DEFAULT_CONFIG.copy()
-            _save_locked()
-    return _config
+    """从数据库加载配置到缓存"""
+    global _config_cache
+    with _cache_lock:
+        db_config = database.get_all_configs()
+        _config_cache = DEFAULT_CONFIG.copy()
+        _config_cache.update(db_config)
+    return _config_cache
 
 
 def get():
-    with _lock:
-        if not _config:
+    """获取当前配置（从缓存）"""
+    with _cache_lock:
+        if not _config_cache:
             load()
-        return dict(_config)
+        return dict(_config_cache)
 
 
 def update(new_values: dict):
-    with _lock:
-        _config.update(new_values)
-        _save_locked()
+    """更新配置（保存到数据库并更新缓存）"""
+    with _cache_lock:
+        # 更新缓存
+        _config_cache.update(new_values)
+        # 保存到数据库
+        database.set_all_configs(_config_cache)
+    return _config_cache
 
 
-def _save_locked():
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(_config, f, ensure_ascii=False, indent=2)
+def reset_to_default():
+    """重置所有配置为默认值"""
+    with _cache_lock:
+        _config_cache = DEFAULT_CONFIG.copy()
+        database.set_all_configs(_config_cache)
+    return _config_cache
