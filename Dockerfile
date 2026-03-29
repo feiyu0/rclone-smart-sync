@@ -1,11 +1,15 @@
 FROM python:3.11-slim
 
-# Install rclone
+# Install rclone from official binary
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    wget \
     ca-certificates \
-    && curl https://rclone.org/install.sh | bash \
-    && apt-get remove -y curl \
+    unzip \
+    && wget -q https://downloads.rclone.org/rclone-current-linux-amd64.zip \
+    && unzip rclone-current-linux-amd64.zip \
+    && mv rclone-*-linux-amd64/rclone /usr/local/bin/ \
+    && rm -rf rclone-current-linux-amd64.zip rclone-*-linux-amd64 \
+    && apt-get remove -y wget unzip \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
