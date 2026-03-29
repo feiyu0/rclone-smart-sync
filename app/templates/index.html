@@ -7,7 +7,6 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a18;font-size:14px}
-a{color:inherit;text-decoration:none}
 .topbar{background:#fff;border-bottom:1px solid #e8e8e4;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .logo{font-size:15px;font-weight:600;letter-spacing:-.3px}
 .nav{display:flex;gap:2px}
@@ -20,7 +19,7 @@ a{color:inherit;text-decoration:none}
 .page{display:none}.page.active{display:block}
 .grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
 .grid-2{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
-.metric{background:#ebebе6;border-radius:8px;padding:14px 16px}
+.metric{background:#f0f0ec;border-radius:8px;padding:14px 16px}
 .metric-label{font-size:12px;color:#888;margin-bottom:4px}
 .metric-value{font-size:24px;font-weight:500}
 .metric-sub{font-size:11px;color:#aaa;margin-top:3px}
@@ -40,12 +39,11 @@ a{color:inherit;text-decoration:none}
 .btn-danger:hover{background:#fcebeb}
 .btn-sm{font-size:12px;padding:4px 10px}
 .btn-group{display:flex;gap:6px}
-.progress-wrap{margin:4px 0 2px}
 .progress-bar{height:4px;border-radius:2px;background:#eee;overflow:hidden}
 .progress-fill{height:100%;border-radius:2px;background:#1D9E75;transition:width .4s}
 .upload-item{padding:10px 0;border-bottom:1px solid #f0f0ec}
 .upload-item:last-child{border-bottom:none}
-.upload-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+.upload-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px}
 .upload-meta{font-size:11px;color:#aaa;margin-top:2px}
 .row{display:flex;align-items:center;gap:8px}
 .row-between{display:flex;align-items:center;justify-content:space-between}
@@ -57,8 +55,7 @@ a{color:inherit;text-decoration:none}
 .toggle-row:last-child{border-bottom:none;padding-bottom:0}
 .toggle-label{font-size:13px;font-weight:500}
 .toggle-sub{font-size:12px;color:#aaa;margin-top:3px}
-.tog{position:relative;width:38px;height:22px;flex-shrink:0;cursor:pointer}
-.tog input{opacity:0;width:0;height:0;position:absolute}
+.tog{position:relative;width:38px;height:22px;flex-shrink:0;cursor:pointer;display:inline-block}
 .tog-track{position:absolute;inset:0;background:#ddd;border-radius:11px;transition:background .2s}
 .tog-track.on{background:#1D9E75}
 .tog-knob{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
@@ -72,13 +69,13 @@ a{color:inherit;text-decoration:none}
 .grid2f{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .tag{font-size:12px;padding:3px 10px;border-radius:20px;background:#f5f5f0;border:1px solid #e8e8e4;color:#666;display:flex;align-items:center;gap:5px}
-.tag-x{cursor:pointer;color:#bbb;font-size:15px;line-height:1;margin-left:2px}
+.tag-x{cursor:pointer;color:#bbb;font-size:15px;line-height:1}
 .tag-x:hover{color:#c0392b}
 .tag-add{cursor:pointer;color:#378ADD;border-color:#b5d4f4;background:#e6f1fb}
-.log-wrap{font-family:monospace;font-size:12px;max-height:320px;overflow-y:auto}
+.log-wrap{font-family:monospace;font-size:12px;max-height:400px;overflow-y:auto}
 .log-line{padding:3px 0;border-bottom:1px solid #f5f5f0;display:flex;gap:10px;line-height:1.5}
 .log-time{color:#bbb;flex-shrink:0;width:56px}
-.log-lv{width:44px;flex-shrink:0;font-weight:500}
+.log-lv{width:52px;flex-shrink:0;font-weight:500}
 .lv-ok{color:#0F6E56}.lv-err{color:#A32D2D}.lv-warn{color:#854F0B}.lv-info{color:#888}
 .log-msg{color:#333;word-break:break-all}
 .sync-step{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0ec;font-size:13px}
@@ -92,6 +89,7 @@ a{color:inherit;text-decoration:none}
 .radio-opt{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
 hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
 .empty{color:#bbb;font-size:13px;text-align:center;padding:20px 0}
+.save-ok{font-size:12px;color:#0F6E56;margin-left:8px}
 </style>
 </head>
 <body>
@@ -113,9 +111,8 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
 
 <div class="main">
 
-<!-- ── 概览页 ─────────────────────────────────────── -->
+<!-- 概览页 -->
 <div class="page active" id="page-overview">
-
   <div class="grid-4">
     <div class="metric"><div class="metric-label">今日上传</div><div class="metric-value" id="m-today">—</div><div class="metric-sub" id="m-today-sub">—</div></div>
     <div class="metric"><div class="metric-label">队列等待</div><div class="metric-value" id="m-queue">—</div><div class="metric-sub" id="m-queue-sub">— 个上传中</div></div>
@@ -125,10 +122,8 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
 
   <div class="grid-2">
     <div>
-
       <div class="card">
         <div class="card-title">模式控制</div>
-
         <div class="toggle-row">
           <div>
             <div class="toggle-label">实时监控</div>
@@ -136,13 +131,12 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
           </div>
           <div class="row">
             <span class="badge badge-muted" id="badge-monitor">未启动</span>
-            <label class="tog" onclick="toggleMonitor()">
+            <div class="tog" onclick="toggleMonitor()">
               <div class="tog-track" id="tog-monitor"></div>
               <div class="tog-knob" id="knob-monitor"></div>
-            </label>
+            </div>
           </div>
         </div>
-
         <div class="toggle-row">
           <div>
             <div class="toggle-label">定时全量同步</div>
@@ -150,13 +144,12 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
           </div>
           <div class="row">
             <span class="badge badge-muted" id="badge-sched">未启用</span>
-            <label class="tog" onclick="toggleScheduler()">
+            <div class="tog" onclick="toggleScheduler()">
               <div class="tog-track" id="tog-sched"></div>
               <div class="tog-knob" id="knob-sched"></div>
-            </label>
+            </div>
           </div>
         </div>
-
         <div class="toggle-row">
           <div>
             <div class="toggle-label">手动全量同步</div>
@@ -175,49 +168,69 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
         <div class="sync-step"><span class="sync-step-label">WebDAV 快照</span><span id="step-snap" class="step-wait">等待中</span></div>
         <div class="sync-step"><span class="sync-step-label">差异对照</span><span id="step-diff" class="step-wait">等待中</span></div>
         <div class="sync-step"><span class="sync-step-label">上传执行</span><span id="step-upload" class="step-wait">等待中</span></div>
-        <div class="progress-wrap" style="margin-top:12px">
-          <div class="progress-bar"><div class="progress-fill" id="sync-progress-fill" style="width:0%"></div></div>
-        </div>
+        <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" id="sync-progress-fill" style="width:0%"></div></div>
         <div style="font-size:11px;color:#aaa;text-align:right;margin-top:4px" id="sync-progress-text"></div>
       </div>
 
       <div class="card">
-        <div class="card-title">正在上传 <span class="badge badge-warn" id="badge-uploading" style="display:none"></span></div>
+        <div class="card-title">
+          正在上传
+          <span class="badge badge-warn" id="badge-uploading" style="display:none"></span>
+        </div>
         <div id="uploading-list"><div class="empty">当前无上传任务</div></div>
       </div>
-
     </div>
 
     <div>
-
       <div class="card">
         <div class="card-title">连接状态</div>
         <div class="conn-row"><span class="conn-key">WebDAV</span><span id="conn-webdav">—</span></div>
         <div class="conn-row"><span class="conn-key">监控目录</span><span id="conn-dir">—</span></div>
         <div class="conn-row"><span class="conn-key">rclone</span><span id="conn-rclone">—</span></div>
-        <div style="margin-top:12px"><button class="btn btn-sm" style="width:100%" onclick="testConnections()">测试连接</button></div>
+        <div style="margin-top:12px">
+          <button class="btn btn-sm" style="width:100%" onclick="testConnections()">测试连接</button>
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">等待队列 <span class="badge badge-muted" id="badge-queue">0</span></div>
+        <div class="card-title">
+          等待队列
+          <span class="badge badge-muted" id="badge-queue">0</span>
+        </div>
         <div id="waiting-list"><div class="empty">队列为空</div></div>
-        <div style="margin-top:12px"><button class="btn btn-sm btn-danger" style="width:100%" onclick="clearQueue()">清空队列</button></div>
+        <div style="margin-top:12px">
+          <button class="btn btn-sm btn-danger" style="width:100%" onclick="clearQueue()">清空队列</button>
+        </div>
       </div>
-
     </div>
   </div>
 </div>
 
-<!-- ── 配置页 ─────────────────────────────────────── -->
+<!-- 配置页 -->
 <div class="page" id="page-config">
-
   <div class="card">
-    <div class="card-title">WebDAV 连接 <span id="test-webdav-result"></span></div>
+    <div class="card-title">
+      WebDAV 连接
+      <span id="test-webdav-result"></span>
+    </div>
     <div class="grid2f">
-      <div class="field"><label>WebDAV 地址</label><input id="cfg-webdav-url" type="text" placeholder="https://dav.example.com/path/"></div>
-      <div class="field"><label>远端目标目录</label><input id="cfg-remote-dir" type="text" placeholder="/Media/Videos/"><div class="field-hint">上传文件存放的根路径</div></div>
-      <div class="field"><label>用户名</label><input id="cfg-username" type="text"></div>
-      <div class="field"><label>密码</label><input id="cfg-password" type="password"></div>
+      <div class="field">
+        <label>WebDAV 地址</label>
+        <input id="cfg-webdav-url" type="text" placeholder="http://192.168.1.x:5244/dav">
+      </div>
+      <div class="field">
+        <label>远端目标目录</label>
+        <input id="cfg-remote-dir" type="text" placeholder="/115/Media/">
+        <div class="field-hint">上传文件存放的根路径</div>
+      </div>
+      <div class="field">
+        <label>用户名</label>
+        <input id="cfg-username" type="text">
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input id="cfg-password" type="password" placeholder="留空则不修改已保存的密码">
+      </div>
     </div>
     <hr class="div">
     <div class="btn-group">
@@ -227,10 +240,16 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
   </div>
 
   <div class="card">
-    <div class="card-title">本地监控目录 <span id="test-dir-result"></span></div>
+    <div class="card-title">
+      本地监控目录
+      <span id="test-dir-result"></span>
+    </div>
     <div class="field">
       <label>监控路径</label>
-      <div class="row"><input id="cfg-watch-dir" type="text" placeholder="/data"><button class="btn btn-sm" onclick="testDir()" style="flex-shrink:0">测试</button></div>
+      <div class="row">
+        <input id="cfg-watch-dir" type="text" placeholder="/data" style="flex:1">
+        <button class="btn btn-sm" onclick="testDir()">测试</button>
+      </div>
       <div class="field-hint">容器内路径，对应宿主机挂载的媒体库目录</div>
     </div>
     <div class="field">
@@ -250,18 +269,34 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
       <div class="card-title">上传行为</div>
       <div class="field">
         <label>并发上传数</label>
-        <select id="cfg-concurrent"><option value="1">1</option><option value="2">2</option><option value="3" selected>3（推荐）</option><option value="5">5</option><option value="8">8</option></select>
+        <select id="cfg-concurrent">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3（推荐）</option>
+          <option value="5">5</option>
+          <option value="8">8</option>
+        </select>
       </div>
       <div class="field">
         <label>覆盖策略</label>
         <div class="radio-group">
-          <label class="radio-opt"><input type="radio" name="ow" value="skip_if_same_size" checked> 大小相同则跳过</label>
+          <label class="radio-opt"><input type="radio" name="ow" value="skip_if_same_size"> 大小相同则跳过</label>
           <label class="radio-opt"><input type="radio" name="ow" value="overwrite_if_newer"> mtime 更新则覆盖</label>
           <label class="radio-opt"><input type="radio" name="ow" value="always"> 总是覆盖</label>
         </div>
       </div>
-      <div class="field"><label>失败重试次数</label><select id="cfg-retry"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option></select></div>
-      <div class="field"><label>单文件超时（分钟）</label><input id="cfg-timeout" type="number" value="60" style="width:90px"></div>
+      <div class="field">
+        <label>失败重试次数</label>
+        <select id="cfg-retry">
+          <option value="1">1</option>
+          <option value="3">3</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>单文件超时（分钟）</label>
+        <input id="cfg-timeout" type="number" value="60" style="width:90px">
+      </div>
       <hr class="div">
       <button class="btn btn-sm btn-primary" onclick="saveSection('upload')">保存</button>
     </div>
@@ -275,7 +310,13 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
       </div>
       <div class="field">
         <label>同步限速</label>
-        <select id="cfg-speed"><option value="0">不限速</option><option value="5M">5 MB/s</option><option value="10M" selected>10 MB/s</option><option value="20M">20 MB/s</option><option value="50M">50 MB/s</option></select>
+        <select id="cfg-speed">
+          <option value="0">不限速</option>
+          <option value="5M">5 MB/s</option>
+          <option value="10M">10 MB/s</option>
+          <option value="20M">20 MB/s</option>
+          <option value="50M">50 MB/s</option>
+        </select>
         <div class="field-hint">实时监控不受此限制</div>
       </div>
       <div class="field">
@@ -283,57 +324,66 @@ hr.div{border:none;border-top:1px solid #f0f0ec;margin:16px 0}
         <input id="cfg-ttl" type="number" value="23" style="width:90px">
         <div class="field-hint">定时同步时若未过期可跳过重查</div>
       </div>
-      <div class="field"><label>日志保留天数</label><input id="cfg-logdays" type="number" value="30" style="width:90px"></div>
+      <div class="field">
+        <label>日志保留天数</label>
+        <input id="cfg-logdays" type="number" value="30" style="width:90px">
+      </div>
       <hr class="div">
       <button class="btn btn-sm btn-primary" onclick="saveSection('schedule')">保存</button>
     </div>
   </div>
-
 </div>
 
-<!-- ── 日志页 ─────────────────────────────────────── -->
+<!-- 日志页 -->
 <div class="page" id="page-logs">
   <div class="card">
     <div class="card-title">
-      实时日志
+      运行日志
       <div class="btn-group">
-        <button class="btn btn-sm" onclick="filterLogs('all')" id="lf-all">全部</button>
-        <button class="btn btn-sm" onclick="filterLogs('error')" id="lf-err">仅错误</button>
-        <button class="btn btn-sm" onclick="filterLogs('success')" id="lf-ok">仅成功</button>
-        <button class="btn btn-sm" onclick="clearLogs()">清空</button>
+        <button class="btn btn-sm active" id="lf-all" onclick="filterLogs('all')">全部</button>
+        <button class="btn btn-sm" id="lf-err" onclick="filterLogs('error')">仅错误</button>
+        <button class="btn btn-sm" id="lf-ok"  onclick="filterLogs('success')">仅成功</button>
+        <button class="btn btn-sm btn-danger" onclick="clearLogs()">清空</button>
       </div>
     </div>
-    <div class="log-wrap" id="log-container"></div>
+    <div class="log-wrap" id="log-container">
+      <div class="empty">暂无日志</div>
+    </div>
   </div>
 </div>
 
-</div>
+</div><!-- .main -->
 
 <script>
-let cfg = {};
-let logFilter = 'all';
-let allLogs = [];
-let monitorOn = false;
-let syncOn = false;
-let schedOn = false;
+'use strict';
 
-// ── Page nav ──────────────────────────────────────────────
+let cfg        = {};
+let logFilter  = 'all';
+let allLogs    = [];
+let monitorOn  = false;
+let syncOn     = false;
+let schedOn    = false;
+
+// ── 页面切换 ──────────────────────────────────────────────
 function showPage(id, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   btn.classList.add('active');
   if (id === 'config') loadConfig();
+  if (id === 'logs')   loadLogsFromDB();
 }
 
-// ── SSE ───────────────────────────────────────────────────
+// ── SSE 实时推送 ──────────────────────────────────────────
 function startSSE() {
   const es = new EventSource('/api/stream');
   es.addEventListener('log', e => {
     const entry = JSON.parse(e.data);
     allLogs.push(entry);
     if (allLogs.length > 500) allLogs.shift();
-    appendLog(entry);
+    if (document.getElementById('page-logs').classList.contains('active')) {
+      appendLog(entry);
+    }
   });
   es.addEventListener('status', e => {
     const d = JSON.parse(e.data);
@@ -342,7 +392,7 @@ function startSSE() {
   es.onerror = () => setTimeout(startSSE, 3000);
 }
 
-// ── Status polling ────────────────────────────────────────
+// ── 状态轮询 ──────────────────────────────────────────────
 function pollStatus() {
   fetch('/api/status').then(r => r.json()).then(d => {
     updateMonitorUI(d.monitor_running);
@@ -359,90 +409,96 @@ function updateMonitorUI(on) {
   const badge = document.getElementById('badge-monitor');
   badge.textContent = on ? '运行中' : '未启动';
   badge.className = 'badge ' + (on ? 'badge-ok' : 'badge-muted');
-  const hdr = document.getElementById('hdr-monitor');
-  hdr.innerHTML = `<span class="dot ${on ? 'dot-on' : 'dot-off'}"></span>${on ? '监控运行中' : '监控未启动'}`;
+  document.getElementById('hdr-monitor').innerHTML =
+    `<span class="dot ${on ? 'dot-on' : 'dot-off'}"></span>${on ? '监控运行中' : '监控未启动'}`;
 }
 
 function updateSyncUI(running, last) {
   syncOn = running;
   document.getElementById('btn-abort').style.display = running ? '' : 'none';
-  document.getElementById('btn-sync').textContent = running ? '进行中…' : '立即执行';
-  document.getElementById('btn-sync').disabled = running;
+  const syncBtn = document.getElementById('btn-sync');
+  syncBtn.textContent = running ? '进行中…' : '立即执行';
+  syncBtn.disabled = running;
   document.getElementById('card-sync-progress').style.display = running ? '' : 'none';
-
-  const hdr = document.getElementById('hdr-sync');
-  hdr.innerHTML = `<span class="dot ${running ? 'dot-busy' : 'dot-off'}"></span>${running ? '同步进行中' : '同步空闲'}`;
-
+  document.getElementById('hdr-sync').innerHTML =
+    `<span class="dot ${running ? 'dot-busy' : 'dot-off'}"></span>${running ? '同步进行中' : '同步空闲'}`;
   if (last) {
-    const s = last.status;
-    const ts = last.finished_at ? last.finished_at.substring(0, 16).replace('T', ' ') : '—';
+    const ts = last.finished_at
+      ? last.finished_at.substring(0, 16).replace('T', ' ') : '—';
     document.getElementById('sync-last').textContent =
-      `上次：${ts} · ${last.total || 0} 个文件 · ${s === 'done' ? '完成' : s}`;
-
+      `上次：${ts} · ${last.total || 0} 个文件 · ${last.status === 'done' ? '完成' : last.status}`;
     if (running) {
       const total = last.total || 1;
-      const done = last.done || 0;
-      const pct = Math.round(done / total * 100);
+      const done  = last.done  || 0;
+      const pct   = Math.round(done / total * 100);
       document.getElementById('sync-progress-fill').style.width = pct + '%';
       document.getElementById('sync-progress-text').textContent = `${pct}% · ${done}/${total}`;
-      document.getElementById('sync-pct-badge').textContent = `${pct}%`;
-      _updateSyncStep(s, done, total);
+      document.getElementById('sync-pct-badge').textContent = pct + '%';
+      updateSyncSteps(last.status, done, total);
     }
   }
 }
 
-function _updateSyncStep(status, done, total) {
-  const steps = ['step-local','step-snap','step-diff','step-upload'];
+function updateSyncSteps(status, done, total) {
   const map = {
-    'running': ['完成','完成','完成',`进行中 ${done}/${total}`],
-    'uploading': ['完成','完成','完成',`上传中 ${done}/${total}`],
-    'done': ['完成','完成','完成','完成'],
+    running:   ['完成', '完成', '完成', `进行中 ${done}/${total}`],
+    uploading: ['完成', '完成', '完成', `上传中 ${done}/${total}`],
+    done:      ['完成', '完成', '完成', '完成'],
   };
   const vals = map[status] || ['等待中','等待中','等待中','等待中'];
-  steps.forEach((id, i) => {
+  ['step-local','step-snap','step-diff','step-upload'].forEach((id, i) => {
     const el = document.getElementById(id);
     el.textContent = vals[i];
-    el.className = vals[i].startsWith('完成') ? 'step-ok' :
-                   vals[i].startsWith('进行') || vals[i].startsWith('上传') ? 'step-running' : 'step-wait';
+    el.className =
+      vals[i].startsWith('完成')  ? 'step-ok' :
+      vals[i].startsWith('进行') || vals[i].startsWith('上传') ? 'step-running' : 'step-wait';
   });
 }
 
 function updateMetrics(stats, queue, snapAge) {
   if (!stats) return;
-  document.getElementById('m-today').textContent = stats.today_total || 0;
+  document.getElementById('m-today').textContent     = stats.today_total || 0;
   document.getElementById('m-today-sub').textContent =
     `成功 ${stats.today_success || 0} · 失败 ${stats.today_failed || 0}`;
-  const waiting = (queue && queue.waiting) ? queue.waiting.length : 0;
-  const active = (queue && queue.uploading) ? queue.uploading.length : 0;
-  document.getElementById('m-queue').textContent = waiting;
+  const waiting = queue && queue.waiting  ? queue.waiting.length  : 0;
+  const active  = queue && queue.uploading ? queue.uploading.length : 0;
+  document.getElementById('m-queue').textContent     = waiting;
   document.getElementById('m-queue-sub').textContent = `${active} 个上传中`;
-  document.getElementById('m-total').textContent = stats.all_time_total || 0;
+  document.getElementById('m-total').textContent     = stats.all_time_total || 0;
   document.getElementById('m-total-sub').textContent = fmtBytes(stats.all_time_bytes || 0);
-  if (snapAge !== null && snapAge !== undefined) {
-    document.getElementById('m-snap').textContent = '已缓存';
+  if (snapAge != null) {
+    document.getElementById('m-snap').textContent     = '已缓存';
     document.getElementById('m-snap-sub').textContent = `${snapAge.toFixed(1)}h 前更新`;
+  } else {
+    document.getElementById('m-snap').textContent     = '—';
+    document.getElementById('m-snap-sub').textContent = '尚未同步';
   }
 }
 
 function updateQueue(queue) {
   if (!queue) return;
   const uploading = queue.uploading || [];
-  const waiting = queue.waiting || [];
+  const waiting   = queue.waiting   || [];
 
   const ul = document.getElementById('uploading-list');
+  const ub = document.getElementById('badge-uploading');
   if (uploading.length === 0) {
     ul.innerHTML = '<div class="empty">当前无上传任务</div>';
-    document.getElementById('badge-uploading').style.display = 'none';
+    ub.style.display = 'none';
   } else {
-    document.getElementById('badge-uploading').style.display = '';
-    document.getElementById('badge-uploading').textContent = uploading.length + ' 个';
+    ub.style.display = '';
+    ub.textContent = uploading.length + ' 个';
     ul.innerHTML = uploading.map(t => `
       <div class="upload-item">
         <div class="row-between">
           <div class="upload-name">${esc(t.name)}</div>
-          <div style="font-size:11px;color:#aaa;flex-shrink:0;margin-left:8px">${t.progress}% · ${fmtBytes(t.transferred)} / ${fmtBytes(t.file_size)}</div>
+          <div style="font-size:11px;color:#aaa;flex-shrink:0;margin-left:8px">
+            ${t.progress}% · ${fmtBytes(t.transferred)} / ${fmtBytes(t.file_size)}
+          </div>
         </div>
-        <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:${t.progress}%"></div></div></div>
+        <div style="margin:4px 0 2px">
+          <div class="progress-bar"><div class="progress-fill" style="width:${t.progress}%"></div></div>
+        </div>
         <div class="upload-meta">来自：${t.source === 'monitor' ? '实时监控' : '全量同步'}</div>
       </div>`).join('');
   }
@@ -455,28 +511,51 @@ function updateQueue(queue) {
     wl.innerHTML = waiting.slice(0, 10).map(t => `
       <div class="queue-item">
         <div class="queue-name">${esc(t.name)}</div>
-        <div class="queue-meta">${fmtBytes(t.file_size)} · ${t.source === 'monitor' ? '实时监控' : '全量同步'}${t.retry_count > 0 ? ' · 重试 ' + t.retry_count : ''}</div>
+        <div class="queue-meta">
+          ${fmtBytes(t.file_size)} · ${t.source === 'monitor' ? '实时监控' : '全量同步'}
+          ${t.retry_count > 0 ? ' · 重试 ' + t.retry_count : ''}
+        </div>
       </div>`).join('');
   }
 }
 
-// ── Logs ──────────────────────────────────────────────────
+// ── 日志 ──────────────────────────────────────────────────
+function loadLogsFromDB() {
+  fetch('/api/logs?level=' + logFilter).then(r => r.json()).then(logs => {
+    const wrap = document.getElementById('log-container');
+    wrap.innerHTML = '';
+    if (logs.length === 0) {
+      wrap.innerHTML = '<div class="empty">暂无日志</div>';
+      return;
+    }
+    logs.forEach(entry => appendLog(entry));
+    wrap.scrollTop = wrap.scrollHeight;
+  });
+}
+
 function appendLog(entry) {
   if (!matchFilter(entry)) return;
   const wrap = document.getElementById('log-container');
+  const empty = wrap.querySelector('.empty');
+  if (empty) empty.remove();
   const div = document.createElement('div');
   div.className = 'log-line';
-  const lvClass = entry.level === 'ERROR' ? 'lv-err' : entry.level === 'WARNING' ? 'lv-warn' :
-    entry.message && (entry.message.includes('Done') || entry.message.includes('成功')) ? 'lv-ok' : 'lv-info';
-  div.innerHTML = `<span class="log-time">${esc(entry.time)}</span><span class="log-lv ${lvClass}">${esc(entry.level)}</span><span class="log-msg">${esc(entry.message)}</span>`;
+  const lvClass =
+    entry.level === 'ERROR'   ? 'lv-err'  :
+    entry.level === 'WARNING' ? 'lv-warn' :
+    entry.message && entry.message.includes('Done') ? 'lv-ok' : 'lv-info';
+  div.innerHTML =
+    `<span class="log-time">${esc(entry.time)}</span>` +
+    `<span class="log-lv ${lvClass}">${esc(entry.level)}</span>` +
+    `<span class="log-msg">${esc(entry.message)}</span>`;
   wrap.appendChild(div);
   wrap.scrollTop = wrap.scrollHeight;
   while (wrap.children.length > 300) wrap.removeChild(wrap.firstChild);
 }
 
 function matchFilter(entry) {
-  if (logFilter === 'error') return ['ERROR','WARNING'].includes(entry.level);
-  if (logFilter === 'success') return entry.message && entry.message.toLowerCase().includes('done') || (entry.message && entry.message.includes('成功'));
+  if (logFilter === 'error')   return ['ERROR','WARNING'].includes(entry.level);
+  if (logFilter === 'success') return entry.message && entry.message.includes('Done');
   return true;
 }
 
@@ -484,23 +563,24 @@ function filterLogs(f) {
   logFilter = f;
   ['all','err','ok'].forEach(k => document.getElementById('lf-' + k).classList.remove('active'));
   document.getElementById('lf-' + (f === 'all' ? 'all' : f === 'error' ? 'err' : 'ok')).classList.add('active');
-  const wrap = document.getElementById('log-container');
-  wrap.innerHTML = '';
-  allLogs.filter(matchFilter).forEach(appendLog);
+  loadLogsFromDB();
 }
 
 function clearLogs() {
-  allLogs = [];
-  document.getElementById('log-container').innerHTML = '';
+  if (!confirm('确认清空所有日志？')) return;
+  fetch('/api/logs/clear', {method: 'POST'}).then(() => {
+    allLogs = [];
+    document.getElementById('log-container').innerHTML = '<div class="empty">暂无日志</div>';
+  });
 }
 
-// ── Monitor toggle ────────────────────────────────────────
+// ── 监控开关 ──────────────────────────────────────────────
 function toggleMonitor() {
   const url = monitorOn ? '/api/monitor/stop' : '/api/monitor/start';
-  fetch(url, {method:'POST'}).then(() => pollStatus());
+  fetch(url, {method: 'POST'}).then(() => pollStatus());
 }
 
-// ── Scheduler toggle ──────────────────────────────────────
+// ── 定时开关 ──────────────────────────────────────────────
 function toggleScheduler() {
   schedOn = !schedOn;
   document.getElementById('tog-sched').classList.toggle('on', schedOn);
@@ -510,14 +590,14 @@ function toggleScheduler() {
   badge.className = 'badge ' + (schedOn ? 'badge-ok' : 'badge-muted');
   fetch('/api/config', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({scheduler_enabled: schedOn})
   });
 }
 
-// ── Sync ──────────────────────────────────────────────────
+// ── 同步 ──────────────────────────────────────────────────
 function startSync() {
-  fetch('/api/sync/start', {method:'POST'}).then(r => r.json()).then(d => {
+  fetch('/api/sync/start', {method: 'POST'}).then(r => r.json()).then(d => {
     if (!d.ok) alert(d.error || '无法启动同步');
     else pollStatus();
   });
@@ -525,153 +605,189 @@ function startSync() {
 
 function abortSync() {
   if (!confirm('确认中止当前同步任务？')) return;
-  fetch('/api/sync/abort', {method:'POST'}).then(() => pollStatus());
+  fetch('/api/sync/abort', {method: 'POST'}).then(() => pollStatus());
 }
 
-// ── Queue ─────────────────────────────────────────────────
+// ── 队列 ──────────────────────────────────────────────────
 function clearQueue() {
   if (!confirm('确认清空等待队列？')) return;
-  fetch('/api/queue/clear', {method:'POST'}).then(() => pollStatus());
+  fetch('/api/queue/clear', {method: 'POST'}).then(() => pollStatus());
 }
 
-// ── Connection test ───────────────────────────────────────
+// ── 首页连接测试（用已保存配置）────────────────────────────
 function testConnections() {
-  const cfg_data = {
-    webdav_url: document.getElementById('cfg-webdav-url') ? document.getElementById('cfg-webdav-url').value : '',
-    webdav_username: document.getElementById('cfg-username') ? document.getElementById('cfg-username').value : '',
-    webdav_password: document.getElementById('cfg-password') ? document.getElementById('cfg-password').value : '',
-  };
   document.getElementById('conn-webdav').textContent = '测试中…';
-  document.getElementById('conn-dir').textContent = '测试中…';
-  document.getElementById('conn-rclone').textContent = '测试中…';
+  document.getElementById('conn-dir').textContent    = '测试中…';
+  document.getElementById('conn-rclone').innerHTML   = '<span style="color:#0F6E56">● 已就绪</span>';
 
   fetch('/api/test/webdav', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(cfg_data)
-  }).then(r=>r.json()).then(d => {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({use_saved: true})
+  }).then(r => r.json()).then(d => {
     document.getElementById('conn-webdav').innerHTML = d.ok
       ? '<span style="color:#0F6E56">● 正常</span>'
-      : `<span style="color:#A32D2D">● ${esc(d.error||'失败')}</span>`;
+      : `<span style="color:#A32D2D">● ${esc(d.error || '失败')}</span>`;
+  }).catch(() => {
+    document.getElementById('conn-webdav').innerHTML = '<span style="color:#A32D2D">● 请求失败</span>';
   });
 
-  const dirPath = document.getElementById('cfg-watch-dir') ? document.getElementById('cfg-watch-dir').value : cfg.local_watch_dir || '';
   fetch('/api/test/localdir', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({path: dirPath})
-  }).then(r=>r.json()).then(d => {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({use_saved: true})
+  }).then(r => r.json()).then(d => {
     document.getElementById('conn-dir').innerHTML = d.ok
       ? `<span style="color:#0F6E56">● 可读 (${d.file_count} 文件)</span>`
-      : `<span style="color:#A32D2D">● ${esc(d.error||'失败')}</span>`;
+      : `<span style="color:#A32D2D">● ${esc(d.error || '失败')}</span>`;
+  }).catch(() => {
+    document.getElementById('conn-dir').innerHTML = '<span style="color:#A32D2D">● 请求失败</span>';
   });
-
-  document.getElementById('conn-rclone').innerHTML = '<span style="color:#0F6E56">● 已就绪</span>';
 }
 
-// ── Config ────────────────────────────────────────────────
+// ── 配置读取 ──────────────────────────────────────────────
 function loadConfig() {
-  fetch('/api/config').then(r=>r.json()).then(data => {
+  fetch('/api/config').then(r => r.json()).then(data => {
     cfg = data;
-    document.getElementById('cfg-webdav-url').value = data.webdav_url || '';
-    document.getElementById('cfg-remote-dir').value = data.webdav_remote_dir || '';
-    document.getElementById('cfg-username').value = data.webdav_username || '';
-    document.getElementById('cfg-password').value = '';
-    document.getElementById('cfg-watch-dir').value = data.local_watch_dir || '';
-    document.getElementById('cfg-concurrent').value = data.concurrent_uploads || 3;
-    document.getElementById('cfg-retry').value = data.retry_count || 3;
-    document.getElementById('cfg-timeout').value = data.single_file_timeout_minutes || 60;
-    document.getElementById('cfg-sched-time').value = data.scheduler_time || '03:00';
-    document.getElementById('cfg-speed').value = data.sync_speed_limit || '10M';
-    document.getElementById('cfg-ttl').value = data.webdav_snapshot_ttl_hours || 23;
-    document.getElementById('cfg-logdays').value = data.log_retain_days || 30;
 
+    setVal('cfg-webdav-url',  data.webdav_url        || '');
+    setVal('cfg-remote-dir',  data.webdav_remote_dir  || '');
+    setVal('cfg-username',    data.webdav_username     || '');
+    setVal('cfg-watch-dir',   data.local_watch_dir     || '');
+    setVal('cfg-concurrent',  String(data.concurrent_uploads          || 3));
+    setVal('cfg-retry',       String(data.retry_count                 || 3));
+    setVal('cfg-timeout',     String(data.single_file_timeout_minutes || 60));
+    setVal('cfg-sched-time',  data.scheduler_time        || '03:00');
+    setVal('cfg-speed',       data.sync_speed_limit      || '10M');
+    setVal('cfg-ttl',         String(data.webdav_snapshot_ttl_hours   || 23));
+    setVal('cfg-logdays',     String(data.log_retain_days             || 30));
+
+    // 密码字段：有已保存密码则只显示 placeholder 提示，不回填
+    const pwField = document.getElementById('cfg-password');
+    pwField.value = '';
+    pwField.placeholder = data.webdav_password === 'HAS_PASSWORD'
+      ? '已保存（留空则不修改）' : '请输入密码';
+
+    // 覆盖策略
     const ow = data.overwrite_policy || 'skip_if_same_size';
-    document.querySelectorAll('input[name="ow"]').forEach(r => r.checked = r.value === ow);
+    document.querySelectorAll('input[name="ow"]').forEach(r => { r.checked = r.value === ow; });
 
+    // 定时开关
     schedOn = !!data.scheduler_enabled;
     document.getElementById('tog-sched').classList.toggle('on', schedOn);
     document.getElementById('knob-sched').classList.toggle('on', schedOn);
-    document.getElementById('badge-sched').textContent = schedOn ? '已启用' : '未启用';
-    document.getElementById('badge-sched').className = 'badge ' + (schedOn ? 'badge-ok' : 'badge-muted');
+    const sb = document.getElementById('badge-sched');
+    sb.textContent = schedOn ? '已启用' : '未启用';
+    sb.className = 'badge ' + (schedOn ? 'badge-ok' : 'badge-muted');
+    const schedSubEl = document.getElementById('sched-sub');
+    if (schedSubEl) schedSubEl.textContent = `每天 ${data.scheduler_time || '03:00'} 自动执行`;
 
-    renderTags('tags-ext', data.video_extensions || [], 'ext');
-    renderTags('tags-ignore', data.ignore_dirs || [], 'ignore');
+    renderTags('tags-ext',    data.video_extensions || [], 'ext');
+    renderTags('tags-ignore', data.ignore_dirs      || [], 'ignore');
   });
 }
 
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+}
+
+// ── 配置保存 ──────────────────────────────────────────────
 function saveSection(section) {
   let payload = {};
+
   if (section === 'webdav') {
     payload = {
-      webdav_url: document.getElementById('cfg-webdav-url').value.trim(),
-      webdav_remote_dir: document.getElementById('cfg-remote-dir').value.trim(),
-      webdav_username: document.getElementById('cfg-username').value.trim(),
+      webdav_url:        getVal('cfg-webdav-url').trim(),
+      webdav_remote_dir: getVal('cfg-remote-dir').trim(),
+      webdav_username:   getVal('cfg-username').trim(),
     };
-    const pw = document.getElementById('cfg-password').value;
-    if (pw && !pw.startsWith('•')) payload.webdav_password = pw;
+    const pw = getVal('cfg-password').trim();
+    if (pw) payload.webdav_password = pw;
+
   } else if (section === 'dirs') {
     payload = {
-      local_watch_dir: document.getElementById('cfg-watch-dir').value.trim(),
+      local_watch_dir:  getVal('cfg-watch-dir').trim(),
       video_extensions: getTagValues('tags-ext'),
-      ignore_dirs: getTagValues('tags-ignore'),
+      ignore_dirs:      getTagValues('tags-ignore'),
     };
+
   } else if (section === 'upload') {
+    const owEl = document.querySelector('input[name="ow"]:checked');
     payload = {
-      concurrent_uploads: parseInt(document.getElementById('cfg-concurrent').value),
-      overwrite_policy: document.querySelector('input[name="ow"]:checked').value,
-      retry_count: parseInt(document.getElementById('cfg-retry').value),
-      single_file_timeout_minutes: parseInt(document.getElementById('cfg-timeout').value),
+      concurrent_uploads:          parseInt(getVal('cfg-concurrent')),
+      overwrite_policy:            owEl ? owEl.value : 'skip_if_same_size',
+      retry_count:                 parseInt(getVal('cfg-retry')),
+      single_file_timeout_minutes: parseInt(getVal('cfg-timeout')),
     };
+
   } else if (section === 'schedule') {
     payload = {
-      scheduler_time: document.getElementById('cfg-sched-time').value.trim(),
-      sync_speed_limit: document.getElementById('cfg-speed').value,
-      webdav_snapshot_ttl_hours: parseInt(document.getElementById('cfg-ttl').value),
-      log_retain_days: parseInt(document.getElementById('cfg-logdays').value),
+      scheduler_time:            getVal('cfg-sched-time').trim(),
+      sync_speed_limit:          getVal('cfg-speed'),
+      webdav_snapshot_ttl_hours: parseInt(getVal('cfg-ttl')),
+      log_retain_days:           parseInt(getVal('cfg-logdays')),
     };
   }
+
   fetch('/api/config', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
-  }).then(r=>r.json()).then(d => {
-    if (d.ok) showToast('已保存');
-    else showToast('保存失败: ' + (d.error||''), true);
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      showToast('已保存');
+      loadConfig();
+    } else {
+      showToast('保存失败: ' + (d.error || ''), true);
+    }
   });
 }
 
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+// ── 配置页连接测试 ────────────────────────────────────────
 function testWebdav() {
+  const pw = getVal('cfg-password').trim();
   const payload = {
-    webdav_url: document.getElementById('cfg-webdav-url').value.trim(),
-    webdav_username: document.getElementById('cfg-username').value.trim(),
-    webdav_password: document.getElementById('cfg-password').value,
+    webdav_url:         getVal('cfg-webdav-url').trim(),
+    webdav_username:    getVal('cfg-username').trim(),
+    use_saved_if_empty: true,
   };
-  document.getElementById('test-webdav-result').innerHTML = '测试中…';
+  if (pw) payload.webdav_password = pw;
+  document.getElementById('test-webdav-result').textContent = '测试中…';
   fetch('/api/test/webdav', {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
-  }).then(r=>r.json()).then(d => {
+  }).then(r => r.json()).then(d => {
     document.getElementById('test-webdav-result').innerHTML = d.ok
       ? '<span style="color:#0F6E56">● 连接正常</span>'
-      : `<span style="color:#A32D2D">● ${esc(d.error||'失败')}</span>`;
+      : `<span style="color:#A32D2D">● ${esc(d.error || '失败')}</span>`;
   });
 }
 
 function testDir() {
-  const path = document.getElementById('cfg-watch-dir').value.trim();
-  document.getElementById('test-dir-result').innerHTML = '测试中…';
+  const path = getVal('cfg-watch-dir').trim();
+  document.getElementById('test-dir-result').textContent = '测试中…';
   fetch('/api/test/localdir', {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({path})
-  }).then(r=>r.json()).then(d => {
+  }).then(r => r.json()).then(d => {
     document.getElementById('test-dir-result').innerHTML = d.ok
       ? `<span style="color:#0F6E56">● 可读 (${d.file_count} 个文件)</span>`
-      : `<span style="color:#A32D2D">● ${esc(d.error||'失败')}</span>`;
+      : `<span style="color:#A32D2D">● ${esc(d.error || '失败')}</span>`;
   });
 }
 
 // ── Tags ──────────────────────────────────────────────────
 function renderTags(containerId, values, type) {
   const el = document.getElementById(containerId);
+  if (!el) return;
   el.innerHTML = values.map(v =>
     `<span class="tag">${esc(v)}<span class="tag-x" onclick="removeTag('${containerId}','${esc(v)}','${type}')">×</span></span>`
   ).join('') + `<span class="tag tag-add" onclick="addTag('${containerId}','${type}')">+ 添加</span>`;
@@ -679,7 +795,10 @@ function renderTags(containerId, values, type) {
 
 function getTagValues(containerId) {
   const el = document.getElementById(containerId);
-  return Array.from(el.querySelectorAll('.tag:not(.tag-add)')).map(t => t.childNodes[0].textContent.trim());
+  if (!el) return [];
+  return Array.from(el.querySelectorAll('.tag:not(.tag-add)'))
+    .map(t => t.childNodes[0].textContent.trim())
+    .filter(v => v.length > 0);
 }
 
 function addTag(containerId, type) {
@@ -695,7 +814,7 @@ function removeTag(containerId, val, type) {
   renderTags(containerId, current, type);
 }
 
-// ── Utils ─────────────────────────────────────────────────
+// ── 工具函数 ──────────────────────────────────────────────
 function fmtBytes(b) {
   if (!b || b === 0) return '0 B';
   const units = ['B','KB','MB','GB','TB'];
@@ -705,27 +824,38 @@ function fmtBytes(b) {
 }
 
 function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function showToast(msg, isErr) {
   const t = document.createElement('div');
   t.textContent = msg;
   Object.assign(t.style, {
-    position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
-    background: isErr ? '#c0392b' : '#1a1a18', color:'#fff',
-    padding:'10px 20px', borderRadius:'8px', fontSize:'13px',
-    zIndex:'9999', opacity:'1', transition:'opacity .3s'
+    position: 'fixed', bottom: '24px', left: '50%',
+    transform: 'translateX(-50%)',
+    background: isErr ? '#c0392b' : '#1a1a18',
+    color: '#fff', padding: '10px 20px',
+    borderRadius: '8px', fontSize: '13px',
+    zIndex: '9999', transition: 'opacity .3s'
   });
   document.body.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
 }
 
-// ── Init ──────────────────────────────────────────────────
+// ── 初始化 ────────────────────────────────────────────────
 startSSE();
 pollStatus();
 setInterval(pollStatus, 4000);
-testConnections();
+
+// 页面加载时拉取配置用于首页连接测试
+fetch('/api/config').then(r => r.json()).then(data => {
+  cfg = data;
+  testConnections();
+});
 </script>
 </body>
 </html>
