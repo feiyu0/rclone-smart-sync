@@ -163,10 +163,14 @@ def api_test_webdav():
     url = data.get("webdav_url", "").rstrip("/") + "/"
     username = data.get("webdav_username", "")
     password = data.get("webdav_password", "")
-    if password.startswith("•"):
-        password = config.get().get("webdav_password", "")
+    
+    # 如果前端传来的密码是空的或占位符，从数据库获取
+    if not password or password.startswith("•"):
+        saved_cfg = config.get()
+        password = saved_cfg.get("webdav_password", "")
+    
     try:
-        auth = (username, password) if username else None
+        auth = (username, password) if username and password else None
         resp = requests.request(
             "PROPFIND", url, auth=auth,
             headers={"Depth": "0"},
