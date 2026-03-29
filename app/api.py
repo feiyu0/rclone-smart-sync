@@ -13,8 +13,8 @@ app = Flask(__name__, template_folder="templates")
 
 _sse_clients = []
 _sse_lock = threading.Lock()
-_log_buffer = []
-_LOG_BUFFER_MAX = 500
+_mem_log_buffer = []
+_MEM_LOG_MAX = 500
 
 
 class SSELogHandler(logging.Handler):
@@ -22,13 +22,17 @@ class SSELogHandler(logging.Handler):
         try:
             msg = self.format(record)
             entry = {
-                "time": time.strftime("%H:%M:%S"),
-                "level": record.levelname,
+                "time":    time.strftime("%H:%M:%S"),
+                "level":   record.levelname,
                 "message": msg,
             }
-            _log_buffer.append(entry)
-            if len(_log_buffer) > _LOG_BUFFER_MAX:
-                _log_buffer.pop(0)
+            _mem_log_buffer.append(entry)
+            if len(_mem_log_buffer) > _MEM_LOG_MAX:
+                _mem_log_buffer.pop(0)
+            try:
+                database.log_insert(record.levelname, msg)
+            except Exception:
+                pass
             _push_sse("log", entry)
         except Exception:
             pass
@@ -89,16 +93,16 @@ def stream():
 
 @app.route("/api/status")
 def api_status():
-    stats = database.get_upload_stats()
+    stats      = database.get_upload_stats()
     queue_info = uploader.get_queue_snapshot()
-    last_sync = database.get_last_sync_task()
-    snap_age = database.get_snapshot_age_hours()
+    last_sync  = database.get_last_sync_task()
+    snap_age   = database.get_snapshot_age_hours()
     return jsonify({
-        "monitor_running": watcher.is_running(),
-        "sync_running": syncer.is_running(),
-        "stats": stats,
-        "queue": queue_info,
-        "last_sync": last_sync,
+        "monitor_running":    watcher.is_running(),
+        "sync_running":       syncer.is_running(),
+        "stats":              stats,
+        "queue":              queue_info,
+        "last_sync":          last_sync,
         "snapshot_age_hours": round(snap_age, 1) if snap_age is not None else None,
     })
 
@@ -106,19 +110,22 @@ def api_status():
 @app.route("/api/logs")
 def api_logs():
     level = request.args.get("level", "all")
-    logs = _log_buffer[-200:]
-    if level == "error":
-        logs = [l for l in logs if l["level"] in ("ERROR", "WARNING")]
-    elif level == "success":
-        logs = [l for l in logs if "Done" in l["message"]]
+    logs  = database.log_query(level_filter=level, limit=300)
     return jsonify(logs)
+
+
+@app.route("/api/logs/clear", methods=["POST"])
+def api_logs_clear():
+    database.log_clear()
+    _mem_log_buffer.clear()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/config", methods=["GET"])
 def api_config_get():
-    cfg = config.get()
+    cfg  = config.get()
     safe = dict(cfg)
-    safe["webdav_password"] = "••••••" if cfg.get("webdav_password") else ""
+    safe["webdav_password"] = "HAS_PASSWORD" if cfg.get("webdav_password") else ""
     return jsonify(safe)
 
 
@@ -127,8 +134,10 @@ def api_config_save():
     data = request.get_json(force=True)
     if not data:
         return jsonify({"ok": False, "error": "No data"}), 400
-    if "webdav_password" in data and data["webdav_password"].startswith("•"):
-        data.pop("webdav_password")
+    if "webdav_password" in data:
+        pw = data["webdav_password"]
+        if not pw or pw in ("HAS_PASSWORD",) or pw.startswith("•"):
+            data.pop("webdav_password")
     config.update(data)
     if "monitor_enabled" in data:
         if data["monitor_enabled"] and not watcher.is_running():
@@ -142,12 +151,23 @@ def api_config_save():
 
 @app.route("/api/test/webdav", methods=["POST"])
 def api_test_webdav():
-    data = request.get_json(force=True) or {}
-    url = data.get("webdav_url", "").rstrip("/") + "/"
-    username = data.get("webdav_username", "")
-    password = data.get("webdav_password", "")
-    if password.startswith("•"):
-        password = config.get().get("webdav_password", "")
+    data  = request.get_json(force=True) or {}
+    saved = config.get()
+
+    if data.get("use_saved"):
+        url      = saved.get("webdav_url", "").rstrip("/") + "/"
+        username = saved.get("webdav_username", "")
+        password = saved.get("webdav_password", "")
+    else:
+        url      = data.get("webdav_url", "").rstrip("/") + "/"
+        username = data.get("webdav_username", "")
+        password = data.get("webdav_password") or ""
+        if not password and data.get("use_saved_if_empty"):
+            password = saved.get("webdav_password", "")
+
+    if not url or url == "/":
+        return jsonify({"ok": False, "error": "未配置 WebDAV 地址"})
+
     try:
         auth = (username, password) if username else None
         resp = requests.request(
@@ -165,13 +185,16 @@ def api_test_webdav():
 @app.route("/api/test/localdir", methods=["POST"])
 def api_test_localdir():
     data = request.get_json(force=True) or {}
-    path = data.get("path", "")
+    if data.get("use_saved"):
+        path = config.get().get("local_watch_dir", "")
+    else:
+        path = data.get("path", "").strip()
     if not path:
-        return jsonify({"ok": False, "error": "No path provided"})
+        return jsonify({"ok": False, "error": "未配置监控目录"})
     if not os.path.isdir(path):
-        return jsonify({"ok": False, "error": "Directory not found"})
+        return jsonify({"ok": False, "error": f"目录不存在: {path}"})
     if not os.access(path, os.R_OK):
-        return jsonify({"ok": False, "error": "No read permission"})
+        return jsonify({"ok": False, "error": "没有读取权限"})
     count = sum(len(files) for _, _, files in os.walk(path))
     return jsonify({"ok": True, "file_count": count})
 
