@@ -37,7 +37,6 @@ class SSELogHandler(logging.Handler):
 def setup_logging():
     """添加 SSE 日志处理器，避免重复添加"""
     root_logger = logging.getLogger()
-    # 检查是否已经有 SSELogHandler，避免重复添加
     if not any(isinstance(h, SSELogHandler) for h in root_logger.handlers):
         handler = SSELogHandler()
         handler.setFormatter(logging.Formatter("%(name)s — %(message)s"))
@@ -62,13 +61,6 @@ def _push_sse(event, data):
 @app.route("/")
 def index():
     return render_template("index.html")
-
-
-@app.route("/static/js/<path:filename>")
-def serve_js(filename):
-    """提供静态 JS 文件"""
-    from flask import send_from_directory
-    return send_from_directory("static/js", filename)
 
 
 # ── SSE stream ─────────────────────────────────────────────────────────
