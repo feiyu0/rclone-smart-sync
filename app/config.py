@@ -37,9 +37,20 @@ def load():
     """从数据库加载配置到缓存"""
     global _config_cache
     with _cache_lock:
+        # 先初始化数据库表（确保 app_config 表存在）
+        database.init()
+        
+        # 从数据库获取配置
         db_config = database.get_all_configs()
+        
+        # 合并默认配置和数据库配置
         _config_cache = DEFAULT_CONFIG.copy()
         _config_cache.update(db_config)
+        
+        # 如果是首次运行，将默认配置保存到数据库
+        if not db_config:
+            database.set_all_configs(DEFAULT_CONFIG)
+            
     return _config_cache
 
 
