@@ -228,7 +228,6 @@ def _do_upload(task, worker_id):
 
 
 def _parse_json_progress(local_path, line, total_size):
-    import json
     try:
         data = json.loads(line)
         stats = data.get("stats", {})
