@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import threading
+import json
 from datetime import datetime
 
 DB_PATH = "/config/sync.db"
@@ -46,12 +47,66 @@ def init():
             skipped INTEGER DEFAULT 0
         );
 
+        CREATE TABLE IF NOT EXISTS app_config (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_upload_local ON upload_history(local_path);
         CREATE INDEX IF NOT EXISTS idx_snapshot_path ON webdav_snapshot(remote_path);
     """)
     c.commit()
 
 
+def get_config(key, default=None):
+    """从数据库获取配置值"""
+    c = _conn()
+    row = c.execute("SELECT value FROM app_config WHERE key = ?", (key,)).fetchone()
+    if row:
+        try:
+            return json.loads(row["value"])
+        except:
+            return row["value"]
+    return default
+
+
+def set_config(key, value):
+    """保存配置值到数据库"""
+    c = _conn()
+    c.execute(
+        "INSERT OR REPLACE INTO app_config (key, value, updated_at) VALUES (?, ?, ?)",
+        (key, json.dumps(value), datetime.now().isoformat())
+    )
+    c.commit()
+
+
+def get_all_configs():
+    """获取所有配置"""
+    c = _conn()
+    rows = c.execute("SELECT key, value FROM app_config").fetchall()
+    result = {}
+    for row in rows:
+        try:
+            result[row["key"]] = json.loads(row["value"])
+        except:
+            result[row["key"]] = row["value"]
+    return result
+
+
+def set_all_configs(config_dict):
+    """批量保存配置"""
+    c = _conn()
+    now = datetime.now().isoformat()
+    for key, value in config_dict.items():
+        c.execute(
+            "INSERT OR REPLACE INTO app_config (key, value, updated_at) VALUES (?, ?, ?)",
+            (key, json.dumps(value), now)
+        )
+    c.commit()
+
+
+# 原有的函数保持不变
 def record_upload(local_path, remote_path, file_size, status="success"):
     c = _conn()
     c.execute(
