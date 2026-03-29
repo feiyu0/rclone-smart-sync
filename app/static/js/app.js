@@ -557,4 +557,11 @@ function showToast(msg, isErr) {
 // ── 初始化 ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   startSSE();
-  poll
+  pollStatus();
+  setInterval(pollStatus, 4000);
+  setTimeout(() => {
+    if (typeof testConnections === 'function') {
+      testConnections();
+    }
+  }, 1000);
+});
