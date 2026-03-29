@@ -316,7 +316,9 @@ function loadConfig() {
       if (el) el.value = val;
     }
     
-    document.getElementById('cfg-password').value = '';
+    // 密码字段保持为空，不显示占位符
+    const passInput = document.getElementById('cfg-password');
+    if (passInput) passInput.value = '';
     
     const ow = data.overwrite_policy || 'skip_if_same_size';
     document.querySelectorAll('input[name="ow"]').forEach(r => {
@@ -338,6 +340,7 @@ function loadConfig() {
     renderTags('tags-ext', data.video_extensions || [], 'ext');
     renderTags('tags-ignore', data.ignore_dirs || [], 'ignore');
     
+    // 保存当前配置到全局变量，供测试连接使用
     window.currentConfig = data;
   }).catch(err => {
     console.error('Failed to load config:', err);
@@ -432,10 +435,27 @@ function testConnections() {
   const passInput = document.getElementById('cfg-password');
   const dirInput = document.getElementById('cfg-watch-dir');
   
+  // 获取当前输入的 WebDAV 信息
+  let webdavUrl = urlInput ? urlInput.value : '';
+  let webdavUser = userInput ? userInput.value : '';
+  let webdavPass = passInput ? passInput.value : '';
+  
+  // 如果输入框为空，尝试从已保存的配置中获取
+  if (!webdavUrl && window.currentConfig?.webdav_url) {
+    webdavUrl = window.currentConfig.webdav_url;
+  }
+  if (!webdavUser && window.currentConfig?.webdav_username) {
+    webdavUser = window.currentConfig.webdav_username;
+  }
+  // 密码特殊处理：如果输入框为空或只有占位符，使用已保存的密码
+  if ((!webdavPass || webdavPass === '' || webdavPass.startsWith('•')) && window.currentConfig?.webdav_password) {
+    webdavPass = window.currentConfig.webdav_password;
+  }
+  
   const testData = {
-    webdav_url: urlInput ? urlInput.value : (window.currentConfig?.webdav_url || ''),
-    webdav_username: userInput ? userInput.value : (window.currentConfig?.webdav_username || ''),
-    webdav_password: passInput ? passInput.value : '',
+    webdav_url: webdavUrl,
+    webdav_username: webdavUser,
+    webdav_password: webdavPass,
   };
   
   const dirPath = dirInput ? dirInput.value : (window.currentConfig?.local_watch_dir || '');
@@ -448,6 +468,7 @@ function testConnections() {
   if (dirStatus) dirStatus.textContent = '测试中…';
   if (rcloneStatus) rcloneStatus.textContent = '测试中…';
 
+  // 测试 WebDAV
   fetch('/api/test/webdav', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -462,6 +483,7 @@ function testConnections() {
     if (webdavStatus) webdavStatus.innerHTML = '<span style="color:#A32D2D">● 连接失败</span>';
   });
 
+  // 测试本地目录
   if (dirPath) {
     fetch('/api/test/localdir', {
       method: 'POST',
@@ -484,11 +506,31 @@ function testConnections() {
 }
 
 function testWebdav() {
+  const urlInput = document.getElementById('cfg-webdav-url');
+  const userInput = document.getElementById('cfg-username');
+  const passInput = document.getElementById('cfg-password');
+  
+  let webdavUrl = urlInput ? urlInput.value : '';
+  let webdavUser = userInput ? userInput.value : '';
+  let webdavPass = passInput ? passInput.value : '';
+  
+  // 如果输入框为空，尝试从已保存的配置中获取
+  if (!webdavUrl && window.currentConfig?.webdav_url) {
+    webdavUrl = window.currentConfig.webdav_url;
+  }
+  if (!webdavUser && window.currentConfig?.webdav_username) {
+    webdavUser = window.currentConfig.webdav_username;
+  }
+  if ((!webdavPass || webdavPass === '' || webdavPass.startsWith('•')) && window.currentConfig?.webdav_password) {
+    webdavPass = window.currentConfig.webdav_password;
+  }
+  
   const payload = {
-    webdav_url: document.getElementById('cfg-webdav-url').value.trim(),
-    webdav_username: document.getElementById('cfg-username').value.trim(),
-    webdav_password: document.getElementById('cfg-password').value,
+    webdav_url: webdavUrl,
+    webdav_username: webdavUser,
+    webdav_password: webdavPass,
   };
+  
   const resultSpan = document.getElementById('test-webdav-result');
   if (resultSpan) resultSpan.innerHTML = '测试中…';
   
