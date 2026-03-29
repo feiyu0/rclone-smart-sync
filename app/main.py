@@ -51,10 +51,6 @@ def index():
 @app.route('/api/status')
 def get_status():
     try:
-        # Get today's upload count
-        today = date.today().strftime('%Y-%m-%d')
-        upload_today = 0  # Simplified, could be queried from database
-        
         pending_tasks = len(db.get_pending_tasks('pending'))
         failed_tasks = len(db.get_pending_tasks('failed'))
         
@@ -65,7 +61,6 @@ def get_status():
             'running_tasks': uploader.get_running_tasks(),
             'pending_tasks': pending_tasks,
             'failed_tasks': failed_tasks,
-            'upload_today': upload_today,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
@@ -76,7 +71,7 @@ def get_status():
 def get_config():
     try:
         config = config_manager.config.copy()
-        # 隐藏密码
+        # 隐藏密码（前端显示占位符）
         if 'webdav' in config and 'password' in config['webdav']:
             if config['webdav']['password']:
                 config['webdav']['password'] = '********'
@@ -91,6 +86,14 @@ def get_config():
 def save_config():
     try:
         new_config = request.json
+        
+        # 处理密码：如果前端传来的是占位符，则不更新密码
+        if 'webdav' in new_config and 'password' in new_config['webdav']:
+            if new_config['webdav']['password'] == '********':
+                # 保持原密码不变
+                if 'webdav' in config_manager.config:
+                    new_config['webdav']['password'] = config_manager.config['webdav'].get('password', '')
+        
         if config_manager.update_config(new_config):
             # Reload scheduler if config changed
             scheduler_manager.reload_job()
@@ -182,12 +185,24 @@ def stream_logs():
 
 @app.route('/api/test/webdav', methods=['POST'])
 def test_webdav():
+    """测试 WebDAV 连接 - 接收明文密码，加密后测试"""
     try:
         webdav_config = request.json
-        # 如果密码是占位符，使用已保存的密码
-        if webdav_config.get('password') == '********':
+        
+        # 获取密码
+        password = webdav_config.get('password', '')
+        
+        # 如果密码是占位符，使用已保存的加密密码
+        if password == '********':
             saved_config = config_manager.get_webdav_config()
-            webdav_config['password'] = saved_config.get('password', '')
+            password = saved_config.get('password', '')
+            webdav_config['password'] = password
+        elif password and not password.startswith('XXXX') and not password.startswith('BASE64_'):
+            # 明文密码，先加密再测试
+            from app.rclone_client import rclone_client
+            encrypted_password = rclone_client.obscure_password(password)
+            webdav_config['password'] = encrypted_password
+            logger.info("Password encrypted for connection test")
         
         success, message = rclone_client.test_connection(webdav_config)
         return jsonify({'success': success, 'message': message})
