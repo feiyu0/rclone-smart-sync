@@ -1,5 +1,4 @@
 import logging
-import os
 import sys
 
 logging.basicConfig(
@@ -12,6 +11,7 @@ logging.basicConfig(
 from app import config, database
 from app.api import app, setup_logging
 from app import uploader, watcher, scheduler
+
 
 def main():
     config.load()
@@ -27,8 +27,8 @@ def main():
     scheduler.start()
 
     logging.info("rclone-sync started — WebUI at http://0.0.0.0:8080")
-
     app.run(host="0.0.0.0", port=8080, threaded=True, use_reloader=False)
+
 
 if __name__ == "__main__":
     main()
