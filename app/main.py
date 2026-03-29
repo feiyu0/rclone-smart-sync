@@ -14,8 +14,8 @@ from app import uploader, watcher, scheduler
 
 
 def main():
-    config.load()
     database.init()
+    config.load()
     setup_logging()
 
     uploader.start()
