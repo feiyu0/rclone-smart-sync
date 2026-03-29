@@ -37,7 +37,7 @@ def load():
     """从数据库加载配置到缓存"""
     global _config_cache
     with _cache_lock:
-        # 先初始化数据库表（确保 app_config 表存在）
+        # 确保数据库表存在
         database.init()
         
         # 从数据库获取配置
@@ -65,6 +65,8 @@ def get():
 def update(new_values: dict):
     """更新配置（保存到数据库并更新缓存）"""
     with _cache_lock:
+        # 确保数据库表存在
+        database.init()
         # 更新缓存
         _config_cache.update(new_values)
         # 保存到数据库
@@ -75,6 +77,7 @@ def update(new_values: dict):
 def reset_to_default():
     """重置所有配置为默认值"""
     with _cache_lock:
+        database.init()
         _config_cache = DEFAULT_CONFIG.copy()
         database.set_all_configs(_config_cache)
     return _config_cache
