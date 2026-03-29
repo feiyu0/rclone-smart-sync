@@ -24,4 +24,3 @@ RUN mkdir -p /config /data /logs
 EXPOSE 8080
 
 CMD ["python", "app/main.py"]
-```
