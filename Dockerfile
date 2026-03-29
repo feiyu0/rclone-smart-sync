@@ -25,14 +25,3 @@ EXPOSE 8080
 
 CMD ["python", "app/main.py"]
 ```
-
----
-
-## 模块 2 — `requirements.txt`
-
-文件路径：`requirements.txt`
-```
-flask==3.0.3
-watchdog==4.0.1
-schedule==1.2.2
-requests==2.32.3
