@@ -49,36 +49,17 @@ class RcloneClient:
             return password
     
     @staticmethod
-    def reveal_password(obscured: str) -> str:
-        """解密密码（rclone 本身没有官方解密命令）"""
-        try:
-            if obscured.startswith('BASE64_'):
-                # Base64 解码
-                encoded = obscured.replace('BASE64_', '')
-                return base64.b64decode(encoded).decode()
-            elif obscured.startswith('XXXX'):
-                # rclone obscure 加密的密码无法直接解密
-                # 返回空字符串，提示用户重新输入
-                logger.warning("Rclone obscured password cannot be decrypted, please re-enter")
-                return ""
-            else:
-                # 明文密码直接返回
-                return obscured
-        except Exception as e:
-            logger.error(f"Password decryption error: {e}")
-            return ""
+    def is_password_encrypted(password: str) -> bool:
+        """检查密码是否已加密"""
+        return password.startswith('XXXX') or password.startswith('BASE64_')
     
     def copy_file(self, local_path: str, remote_path: str, callback: Optional[Callable] = None) -> bool:
         try:
             webdav_config = self._get_webdav_config()
             remote_name = f"webdav_{os.getpid()}"
             
-            # 获取密码（如果是加密的，需要解密）
+            # 获取密码（已经是加密格式，rclone 可以直接使用）
             password = webdav_config.get('password', '')
-            if password.startswith('XXXX') or password.startswith('BASE64_'):
-                # 密码已加密，rclone 可以直接使用加密格式
-                # 不需要解密，rclone 原生支持
-                pass
             
             # Build rclone config
             config_data = f"""
@@ -116,7 +97,10 @@ pass = {password}
             process.wait(timeout=self.timeout)
             
             # Cleanup
-            os.unlink(config_file)
+            try:
+                os.unlink(config_file)
+            except:
+                pass
             
             if process.returncode == 0:
                 logger.info(f"Successfully copied: {local_path}")
@@ -134,13 +118,20 @@ pass = {password}
             return False
     
     def test_connection(self, webdav_config: Dict) -> tuple[bool, str]:
+        """测试 WebDAV 连接"""
         try:
             remote_name = f"webdav_test_{os.getpid()}"
             config_file = f"/tmp/rclone_test_{os.getpid()}.conf"
             
-            # 处理密码
+            # 获取密码
             password = webdav_config.get('password', '')
             
+            # 如果密码是明文且不为空，先加密
+            if password and not self.is_password_encrypted(password):
+                logger.info("Testing connection with plain password, encrypting first...")
+                password = self.obscure_password(password)
+            
+            # 创建 rclone 配置文件
             config_data = f"""
 [{remote_name}]
 type = webdav
@@ -152,24 +143,41 @@ pass = {password}
             with open(config_file, 'w') as f:
                 f.write(config_data)
             
+            # 测试连接：列出根目录
             cmd = ["rclone", "lsf", f"{remote_name}:", "--config", config_file, "--max-depth=1"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            os.unlink(config_file)
+            
+            # 清理临时配置文件
+            try:
+                os.unlink(config_file)
+            except:
+                pass
             
             if result.returncode == 0:
                 return True, "连接成功"
             else:
-                return False, f"连接失败: {result.stderr}"
+                error_msg = result.stderr.strip()
+                logger.error(f"Connection test failed: {error_msg}")
+                return False, f"连接失败: {error_msg}"
+                
+        except subprocess.TimeoutExpired:
+            return False, "连接超时"
         except Exception as e:
+            logger.error(f"Test connection error: {e}")
             return False, f"连接错误: {str(e)}"
     
     def list_remote_files(self, remote_path: str) -> List[Dict]:
+        """列出远程文件"""
         try:
             webdav_config = self._get_webdav_config()
             remote_name = f"webdav_list_{os.getpid()}"
             config_file = f"/tmp/rclone_list_{os.getpid()}.conf"
             
             password = webdav_config.get('password', '')
+            
+            # 确保密码是加密格式
+            if password and not self.is_password_encrypted(password):
+                password = self.obscure_password(password)
             
             config_data = f"""
 [{remote_name}]
@@ -185,7 +193,11 @@ pass = {password}
             remote_full = f"{remote_name}:{remote_path}"
             cmd = ["rclone", "lsjson", remote_full, "--config", config_file, "--recursive"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            os.unlink(config_file)
+            
+            try:
+                os.unlink(config_file)
+            except:
+                pass
             
             if result.returncode == 0:
                 files = json.loads(result.stdout)
