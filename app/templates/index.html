@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Sync to WebDAV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .status-card {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-card .label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .status-card .value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            margin-bottom: -2px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        button.danger {
+            background: #e53e3e;
+        }
+        
+        button.danger:hover {
+            background: #c53030;
+        }
+        
+        button.success {
+            background: #48bb78;
+        }
+        
+        button.success:hover {
+            background: #38a169;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        
+        .alert-info {
+            background: #bee3f8;
+            color: #2c5282;
+            border: 1px solid #90cdf4;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📁 Media Sync to WebDAV</h1>
+            <p>Real-time file monitoring and synchronization</p>
+            <div class="status-bar" id="statusBar">
+                <div class="status-card">
+                    <div class="label">Monitor</div>
+                    <div class="value" id="monitorStatus">Stopped</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">Queue Size</div>
+                    <div class="value" id="queueSize">0</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">Running Tasks</div>
+                    <div class="value" id="runningTasks">0</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">Sync Status</div>
+                    <div class="value" id="syncStatus">Idle</div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('overview')">Overview</button>
+            <button class="tab" onclick="switchTab('config')">Configuration</button>
+        </div>
+        
+        <div id="overview" class="tab-content active">
+            <div class="panel">
+                <h3>Control Panel</h3>
+                <div class="button-group">
+                    <button id="startMonitorBtn" onclick="startMonitor()">▶ Start Monitoring</button>
+                    <button id="stopMonitorBtn" onclick="stopMonitor()" disabled>⏸ Stop Monitoring</button>
+                    <button id="startSyncBtn" onclick="startFullSync()">🔄 Full Sync</button>
+                    <button id="abortSyncBtn" onclick="abortSync()" disabled>⏹ Abort Sync</button>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>Upload Progress</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="uploadProgress" style="width: 0%">0%</div>
+                </div>
+                <div id="activeUploads"></div>
+            </div>
+            
+            <div class="panel">
+                <h3>Logs</h3>
+                <div class="log-container" id="logContainer"></div>
+            </div>
+        </div>
+        
+        <div id="config" class="tab-content">
+            <div class="panel">
+                <h3>WebDAV Configuration</h3>
+                <div class="form-group">
+                    <label>URL</label>
+                    <input type="text" id="webdavUrl" placeholder="https://example.com/dav/">
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="webdavUsername">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="webdavPassword">
+                </div>
+                <div class="form-group">
+                    <label>Remote Path</label>
+                    <input type="text" id="webdavRemotePath" value="/">
+                </div>
+                <button onclick="testWebDAV()">Test Connection</button>
+            </div>
+            
+            <div class="panel">
+                <h3>Monitor Configuration</h3>
+                <div class="form-group">
+                    <label>Local Directory</label>
+                    <input type="text" id="monitorLocalPath" placeholder="/data/media">
+                    <button onclick="browseLocal()" style="margin-top: 5px;">Browse</button>
+                </div>
+                <div class="form-group">
+                    <label>File Extensions (comma-separated)</label>
+                    <input type="text" id="monitorExtensions" placeholder="mp4,mkv,avi">
+                </div>
+                <div class="form-group">
+                    <label>Ignore Directories</label>
+                    <input type="text" id="monitorIgnoreDirs" placeholder="@eaDir,@Recycle,tmp">
+                </div>
+                <button onclick="testDirectory()">Test Directory</button>
+            </div>
+            
+            <div class="panel">
+                <h3>Upload Settings</h3>
+                <div class="form-group">
+                    <label>Concurrency</label>
+                    <input type="number" id="uploadConcurrency" min="1" max="10" value="3">
+                </div>
+                <div class="form-group">
+                    <label>Overwrite Policy</label>
+                    <select id="uploadOverwritePolicy">
+                        <option value="skip">Skip existing</option>
+                        <option value="overwrite">Overwrite if different</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Retry Count</label>
+                    <input type="number" id="uploadRetryCount" min="0" max="10" value="3">
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>Sync Schedule</h3>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="scheduleEnabled"> Enable Scheduled Sync
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Cron Expression</label>
+                    <input type="text" id="scheduleCron" placeholder="0 3 * * *" value="0 3 * * *">
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button onclick="saveConfig()">Save Configuration</button>
+                <button onclick="loadConfig()">Reload Configuration</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let eventSource = null;
+        let statusInterval = null;
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+        
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('/api/logs/stream');
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'log') {
+                    addLogEntry(data.message);
+                }
+            };
+            
+            eventSource.onerror = function() {
+                setTimeout(connectSSE, 5000);
+            };
+        }
+        
+        function addLogEntry(message) {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = message;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+            
+            // Limit log entries
+            while (container.children.length > 500) {
+                container.removeChild(container.firstChild);
+            }
+        }
+        
+        function updateStatus() {
+            fetch('/api/status')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('monitorStatus').textContent = data.monitor_running ? 'Running' : 'Stopped';
+                    document.getElementById('queueSize').textContent = data.queue_size;
+                    document.getElementById('runningTasks').textContent = data.running_tasks;
+                    document.getElementById('syncStatus').textContent = data.sync_running ? 'Running' : 'Idle';
+                    
+                    document.getElementById('startMonitorBtn').disabled = data.monitor_running;
+                    document.getElementById('stopMonitorBtn').disabled = !data.monitor_running;
+                    document.getElementById('startSyncBtn').disabled = data.sync_running;
+                    document.getElementById('abortSyncBtn').disabled = !data.sync_running;
+                    
+                    // Update progress (simplified)
+                    const total = data.queue_size + data.running_tasks;
+                    const progress = total > 0 ? ((data.queue_size / total) * 100) : 0;
+                    document.getElementById('uploadProgress').style.width = progress + '%';
+                    document.getElementById('uploadProgress').textContent = Math.round(progress) + '%';
+                })
+                .catch(err => console.error('Status update error:', err));
+        }
+        
+        function startMonitor() {
+            fetch('/api/monitor/start', {method: 'POST'})
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        addLogEntry('[INFO] Monitoring started');
+                    } else {
+                        alert('Failed to start monitor: ' + (data.error || 'Unknown error'));
+                    }
+                });
+        }
+        
+        function stopMonitor() {
+            fetch('/api/monitor/stop', {method: 'POST'})
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        addLogEntry('[INFO] Monitoring stopped');
+                    }
+                });
+        }
+        
+        function startFullSync() {
+            fetch('/api/sync/full', {method: 'POST'})
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        addLogEntry('[INFO] Full sync started');
+                    } else {
+                        alert('Failed to start sync: ' + (data.error || 'Unknown error'));
+                    }
+                });
+        }
+        
+        function abortSync() {
+            fetch('/api/sync/abort', {method: 'POST'})
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        addLogEntry('[INFO] Sync aborted');
+                    }
+                });
+        }
+        
+        function loadConfig() {
+            fetch('/api/config')
+                .then(res => res.json())
+                .then(config => {
+                    document.getElementById('webdavUrl').value = config.webdav?.url || '';
+                    document.getElementById('webdavUsername').value = config.webdav?.username || '';
+                    document.getElementById('webdavPassword').value = '';
+                    document.getElementById('webdavRemotePath').value = config.webdav?.remote_path || '/';
+                    
+                    document.getElementById('monitorLocalPath').value = config.monitor?.local_path || '';
+                    document.getElementById('monitorExtensions').value = config.monitor?.extensions?.join(',') || '';
+                    document.getElementById('monitorIgnoreDirs').value = config.monitor?.ignore_dirs?.join(',') || '';
+                    
+                    document.getElementById('uploadConcurrency').value = config.upload?.concurrency || 3;
+                    document.getElementById('uploadOverwritePolicy').value = config.upload?.overwrite_policy || 'skip';
+                    document.getElementById('uploadRetryCount').value = config.upload?.retry_count || 3;
+                    
+                    document.getElementById('scheduleEnabled').checked = config.sync?.schedule_enabled || false;
+                    document.getElementById('scheduleCron').value = config.sync?.schedule_cron || '0 3 * * *';
+                })
+                .catch(err => console.error('Load config error:', err));
+        }
+        
+        function saveConfig() {
+            const config = {
+                webdav: {
+                    url: document.getElementById('webdavUrl').value,
+                    username: document.getElementById('webdavUsername').value,
+                    password: document.getElementById('webdavPassword').value,
+                    remote_path: document.getElementById('webdavRemotePath').value
+                },
+                monitor: {
+                    local_path: document.getElementById('monitorLocalPath').value,
+                    extensions: document.getElementById('monitorExtensions').value.split(',').map(s => s.trim()).filter(s => s),
+                    ignore_dirs: document.getElementById('monitorIgnoreDirs').value.split(',').map(s => s.trim()).filter(s => s)
+                },
+                upload: {
+                    concurrency: parseInt(document.getElementById('uploadConcurrency').value),
+                    overwrite_policy: document.getElementById('uploadOverwritePolicy').value,
+                    retry_count: parseInt(document.getElementById('uploadRetryCount').value)
+                },
+                sync: {
+                    schedule_enabled: document.getElementById('scheduleEnabled').checked,
+                    schedule_cron: document.getElementById('scheduleCron').value
+                }
+            };
+            
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Configuration saved successfully');
+                        loadConfig();
+                    } else {
+                        alert('Failed to save config: ' + (data.error || 'Unknown error'));
+                    }
+                });
+        }
+        
+        function testWebDAV() {
+            const config = {
+                url: document.getElementById('webdavUrl').value,
+                username: document.getElementById('webdavUsername').value,
+                password: document.getElementById('webdavPassword').value
+            };
+            
+            fetch('/api/test/webdav', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('WebDAV connection successful!');
+                    } else {
+                        alert('WebDAV connection failed: ' + data.message);
+                    }
+                });
+        }
+        
+        function testDirectory() {
+            const path = document.getElementById('monitorLocalPath').value;
+            fetch('/api/test/dir', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: path})
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Directory is accessible. Writable: ' + (data.writable ? 'Yes' : 'No'));
+                    } else {
+                        alert('Directory test failed: ' + data.message);
+                    }
+                });
+        }
+        
+        function browseLocal() {
+            const currentPath = document.getElementById('monitorLocalPath').value || '/';
+            // Simple prompt for browsing (can be enhanced)
+            const newPath = prompt('Enter directory path:', currentPath);
+            if (newPath) {
+                document.getElementById('monitorLocalPath').value = newPath;
+            }
+        }
+        
+        // Initialize
+        connectSSE();
+        statusInterval = setInterval(updateStatus, 2000);
+        loadConfig();
+        updateStatus();
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            if (statusInterval) {
+                clearInterval(statusInterval);
+            }
+        });
+    </script>
+</body>
+</html>
