@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Sync to WebDAV</title>
+    <title>Rclone 同步管理器 - 媒体库同步工具</title>
     <style>
         * {
             margin: 0;
@@ -151,10 +151,19 @@
             background: #38a169;
         }
         
+        button.secondary {
+            background: #718096;
+        }
+        
+        button.secondary:hover {
+            background: #4a5568;
+        }
+        
         .button-group {
             display: flex;
             gap: 10px;
             margin-top: 20px;
+            flex-wrap: wrap;
         }
         
         .log-container {
@@ -217,6 +226,22 @@
             border: 1px solid #90cdf4;
         }
         
+        .help-text {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 5px;
+        }
+        
+        .encrypted-badge {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -235,133 +260,189 @@
 <body>
     <div class="container">
         <header>
-            <h1>📁 Media Sync to WebDAV</h1>
-            <p>Real-time file monitoring and synchronization</p>
+            <h1>📁 Rclone 同步管理器</h1>
+            <p>媒体库实时监控与 WebDAV 同步工具</p>
             <div class="status-bar" id="statusBar">
                 <div class="status-card">
-                    <div class="label">Monitor</div>
-                    <div class="value" id="monitorStatus">Stopped</div>
+                    <div class="label">监控状态</div>
+                    <div class="value" id="monitorStatus">已停止</div>
                 </div>
                 <div class="status-card">
-                    <div class="label">Queue Size</div>
+                    <div class="label">队列长度</div>
                     <div class="value" id="queueSize">0</div>
                 </div>
                 <div class="status-card">
-                    <div class="label">Running Tasks</div>
+                    <div class="label">运行中任务</div>
                     <div class="value" id="runningTasks">0</div>
                 </div>
                 <div class="status-card">
-                    <div class="label">Sync Status</div>
-                    <div class="value" id="syncStatus">Idle</div>
+                    <div class="label">同步状态</div>
+                    <div class="value" id="syncStatus">空闲</div>
                 </div>
             </div>
         </header>
         
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('overview')">Overview</button>
-            <button class="tab" onclick="switchTab('config')">Configuration</button>
+            <button class="tab active" onclick="switchTab('overview')">仪表盘</button>
+            <button class="tab" onclick="switchTab('config')">配置</button>
         </div>
         
         <div id="overview" class="tab-content active">
             <div class="panel">
-                <h3>Control Panel</h3>
+                <h3>控制面板</h3>
                 <div class="button-group">
-                    <button id="startMonitorBtn" onclick="startMonitor()">▶ Start Monitoring</button>
-                    <button id="stopMonitorBtn" onclick="stopMonitor()" disabled>⏸ Stop Monitoring</button>
-                    <button id="startSyncBtn" onclick="startFullSync()">🔄 Full Sync</button>
-                    <button id="abortSyncBtn" onclick="abortSync()" disabled>⏹ Abort Sync</button>
+                    <button id="startMonitorBtn" onclick="startMonitor()">▶ 启动监控</button>
+                    <button id="stopMonitorBtn" onclick="stopMonitor()" disabled>⏸ 停止监控</button>
+                    <button id="startSyncBtn" onclick="startFullSync()">🔄 执行全量同步</button>
+                    <button id="abortSyncBtn" onclick="abortSync()" disabled>⏹ 中止同步</button>
                 </div>
             </div>
             
             <div class="panel">
-                <h3>Upload Progress</h3>
+                <h3>上传进度</h3>
                 <div class="progress-bar">
                     <div class="progress-fill" id="uploadProgress" style="width: 0%">0%</div>
                 </div>
-                <div id="activeUploads"></div>
+                <div id="activeUploads">
+                    <p style="color: #718096; text-align: center;">暂无正在上传的文件</p>
+                </div>
             </div>
             
             <div class="panel">
-                <h3>Logs</h3>
-                <div class="log-container" id="logContainer"></div>
+                <h3>实时日志</h3>
+                <div class="button-group" style="margin-bottom: 10px;">
+                    <button onclick="clearLogs()" class="secondary">🗑 清空日志</button>
+                </div>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry">[信息] 等待日志输出...</div>
+                </div>
             </div>
         </div>
         
         <div id="config" class="tab-content">
             <div class="panel">
-                <h3>WebDAV Configuration</h3>
+                <h3>WebDAV 连接配置</h3>
                 <div class="form-group">
-                    <label>URL</label>
+                    <label>服务器地址</label>
                     <input type="text" id="webdavUrl" placeholder="https://example.com/dav/">
+                    <div class="help-text">WebDAV 服务地址，例如：https://dav.example.com/</div>
                 </div>
                 <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="webdavUsername">
+                    <label>用户名</label>
+                    <input type="text" id="webdavUsername" placeholder="用户名">
                 </div>
                 <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="webdavPassword">
+                    <label>密码</label>
+                    <input type="password" id="webdavPassword" placeholder="输入密码（将被加密存储）">
+                    <div class="help-text">🔒 密码将被加密存储，安全性有保障</div>
                 </div>
                 <div class="form-group">
-                    <label>Remote Path</label>
-                    <input type="text" id="webdavRemotePath" value="/">
+                    <label>远程目录</label>
+                    <input type="text" id="webdavRemotePath" value="/" placeholder="/">
+                    <div class="help-text">WebDAV 服务器上的目标路径</div>
                 </div>
-                <button onclick="testWebDAV()">Test Connection</button>
+                <div class="button-group">
+                    <button onclick="testWebDAV()">🔌 测试连接</button>
+                </div>
             </div>
             
             <div class="panel">
-                <h3>Monitor Configuration</h3>
+                <h3>本地监控配置</h3>
                 <div class="form-group">
-                    <label>Local Directory</label>
+                    <label>本地目录路径</label>
                     <input type="text" id="monitorLocalPath" placeholder="/data/media">
-                    <button onclick="browseLocal()" style="margin-top: 5px;">Browse</button>
+                    <div class="help-text">要监控的本地媒体库目录</div>
+                    <button onclick="browseLocal()" style="margin-top: 5px;">📂 浏览目录</button>
                 </div>
                 <div class="form-group">
-                    <label>File Extensions (comma-separated)</label>
+                    <label>文件扩展名白名单</label>
                     <input type="text" id="monitorExtensions" placeholder="mp4,mkv,avi">
+                    <div class="help-text">用英文逗号分隔，例如：mp4,mkv,avi</div>
                 </div>
                 <div class="form-group">
-                    <label>Ignore Directories</label>
+                    <label>忽略的目录</label>
                     <input type="text" id="monitorIgnoreDirs" placeholder="@eaDir,@Recycle,tmp">
+                    <div class="help-text">用英文逗号分隔，这些目录不会被监控</div>
                 </div>
-                <button onclick="testDirectory()">Test Directory</button>
+                <div class="button-group">
+                    <button onclick="testDirectory()">✅ 测试目录</button>
+                </div>
             </div>
             
             <div class="panel">
-                <h3>Upload Settings</h3>
+                <h3>上传行为设置</h3>
                 <div class="form-group">
-                    <label>Concurrency</label>
+                    <label>并发上传数</label>
                     <input type="number" id="uploadConcurrency" min="1" max="10" value="3">
+                    <div class="help-text">同时上传的文件数量，建议不超过5个</div>
                 </div>
                 <div class="form-group">
-                    <label>Overwrite Policy</label>
+                    <label>覆盖策略</label>
                     <select id="uploadOverwritePolicy">
-                        <option value="skip">Skip existing</option>
-                        <option value="overwrite">Overwrite if different</option>
+                        <option value="skip">存在则跳过</option>
+                        <option value="overwrite">较新则覆盖</option>
+                    </select>
+                    <div class="help-text">当远端文件已存在时的处理方式</div>
+                </div>
+                <div class="form-group">
+                    <label>重试次数</label>
+                    <input type="number" id="uploadRetryCount" min="0" max="10" value="3">
+                    <div class="help-text">上传失败时的最大重试次数</div>
+                </div>
+                <div class="form-group">
+                    <label>超时时间（秒）</label>
+                    <input type="number" id="uploadTimeout" min="30" max="3600" value="300">
+                    <div class="help-text">单个文件上传的超时限制</div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>定时同步与限速</h3>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="scheduleEnabled"> 启用定时同步
+                    </label>
+                    <div class="help-text">按计划自动执行全量同步</div>
+                </div>
+                <div class="form-group">
+                    <label>Cron 表达式</label>
+                    <input type="text" id="scheduleCron" placeholder="0 3 * * *" value="0 3 * * *">
+                    <div class="help-text">格式：分 时 日 月 周，例如：0 3 * * * 表示每天凌晨3点</div>
+                </div>
+                <div class="form-group">
+                    <label>带宽限制</label>
+                    <input type="text" id="syncBwlimit" placeholder="例如：10M 或 1G">
+                    <div class="help-text">全量同步时的带宽限制（如：10M表示10兆字节/秒）</div>
+                </div>
+                <div class="form-group">
+                    <label>快照缓存时间（小时）</label>
+                    <input type="number" id="syncSnapshotTtl" min="1" max="168" value="24">
+                    <div class="help-text">远端文件列表的缓存时间，减少网络请求</div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>日志设置</h3>
+                <div class="form-group">
+                    <label>日志级别</label>
+                    <select id="logLevel">
+                        <option value="DEBUG">DEBUG - 调试</option>
+                        <option value="INFO">INFO - 信息</option>
+                        <option value="WARNING">WARNING - 警告</option>
+                        <option value="ERROR">ERROR - 错误</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Retry Count</label>
-                    <input type="number" id="uploadRetryCount" min="0" max="10" value="3">
-                </div>
-            </div>
-            
-            <div class="panel">
-                <h3>Sync Schedule</h3>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="scheduleEnabled"> Enable Scheduled Sync
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label>Cron Expression</label>
-                    <input type="text" id="scheduleCron" placeholder="0 3 * * *" value="0 3 * * *">
+                    <label>日志保留天数</label>
+                    <input type="number" id="logRetainDays" min="1" max="30" value="7">
+                    <div class="help-text">超过天数的日志文件将被自动清理</div>
                 </div>
             </div>
             
             <div class="button-group">
-                <button onclick="saveConfig()">Save Configuration</button>
-                <button onclick="loadConfig()">Reload Configuration</button>
+                <button onclick="saveConfig()">💾 保存全部配置</button>
+                <button onclick="loadConfig()" class="secondary">🔄 重新加载配置</button>
+                <button onclick="resetConfig()" class="danger">↺ 重置为默认</button>
             </div>
         </div>
     </div>
@@ -371,11 +452,13 @@
         let statusInterval = null;
         
         function switchTab(tabName) {
+            // 切换标签页
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
             document.getElementById(tabName).classList.add('active');
             
+            // 更新按钮状态
             document.querySelectorAll('.tab').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -396,6 +479,7 @@
             };
             
             eventSource.onerror = function() {
+                console.log('SSE连接断开，5秒后重连...');
                 setTimeout(connectSSE, 5000);
             };
         }
@@ -404,37 +488,62 @@
             const container = document.getElementById('logContainer');
             const entry = document.createElement('div');
             entry.className = 'log-entry';
-            entry.textContent = message;
+            
+            // 美化日志级别显示
+            let displayMessage = message;
+            if (message.includes('ERROR')) {
+                displayMessage = message.replace('ERROR', '❌ 错误');
+            } else if (message.includes('WARNING')) {
+                displayMessage = message.replace('WARNING', '⚠️ 警告');
+            } else if (message.includes('INFO')) {
+                displayMessage = message.replace('INFO', 'ℹ️ 信息');
+            } else if (message.includes('SUCCESS')) {
+                displayMessage = message.replace('SUCCESS', '✅ 成功');
+            }
+            
+            entry.textContent = displayMessage;
             container.appendChild(entry);
             container.scrollTop = container.scrollHeight;
             
-            // Limit log entries
+            // 限制日志条目数量
             while (container.children.length > 500) {
                 container.removeChild(container.firstChild);
             }
+        }
+        
+        function clearLogs() {
+            const container = document.getElementById('logContainer');
+            container.innerHTML = '<div class="log-entry">[信息] 日志已清空</div>';
         }
         
         function updateStatus() {
             fetch('/api/status')
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('monitorStatus').textContent = data.monitor_running ? 'Running' : 'Stopped';
+                    document.getElementById('monitorStatus').textContent = data.monitor_running ? '运行中' : '已停止';
                     document.getElementById('queueSize').textContent = data.queue_size;
                     document.getElementById('runningTasks').textContent = data.running_tasks;
-                    document.getElementById('syncStatus').textContent = data.sync_running ? 'Running' : 'Idle';
+                    document.getElementById('syncStatus').textContent = data.sync_running ? '运行中' : '空闲';
                     
                     document.getElementById('startMonitorBtn').disabled = data.monitor_running;
                     document.getElementById('stopMonitorBtn').disabled = !data.monitor_running;
                     document.getElementById('startSyncBtn').disabled = data.sync_running;
                     document.getElementById('abortSyncBtn').disabled = !data.sync_running;
                     
-                    // Update progress (simplified)
+                    // 更新进度
                     const total = data.queue_size + data.running_tasks;
-                    const progress = total > 0 ? ((data.queue_size / total) * 100) : 0;
+                    const progress = total > 0 ? ((data.running_tasks / total) * 100) : 0;
                     document.getElementById('uploadProgress').style.width = progress + '%';
                     document.getElementById('uploadProgress').textContent = Math.round(progress) + '%';
+                    
+                    // 显示正在上传的文件
+                    if (data.running_tasks > 0) {
+                        document.getElementById('activeUploads').innerHTML = `<p>📤 正在上传 ${data.running_tasks} 个文件，队列剩余 ${data.queue_size} 个</p>`;
+                    } else {
+                        document.getElementById('activeUploads').innerHTML = '<p style="color: #718096; text-align: center;">暂无正在上传的文件</p>';
+                    }
                 })
-                .catch(err => console.error('Status update error:', err));
+                .catch(err => console.error('状态更新错误:', err));
         }
         
         function startMonitor() {
@@ -442,11 +551,13 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        addLogEntry('[INFO] Monitoring started');
+                        addLogEntry('[信息] 监控已启动');
+                        showMessage('监控已启动', 'success');
                     } else {
-                        alert('Failed to start monitor: ' + (data.error || 'Unknown error'));
+                        showMessage('启动失败: ' + (data.error || '未知错误'), 'error');
                     }
-                });
+                })
+                .catch(err => showMessage('请求失败: ' + err.message, 'error'));
         }
         
         function stopMonitor() {
@@ -454,7 +565,8 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        addLogEntry('[INFO] Monitoring stopped');
+                        addLogEntry('[信息] 监控已停止');
+                        showMessage('监控已停止', 'info');
                     }
                 });
         }
@@ -464,21 +576,25 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        addLogEntry('[INFO] Full sync started');
+                        addLogEntry('[信息] 全量同步已开始');
+                        showMessage('全量同步已开始', 'success');
                     } else {
-                        alert('Failed to start sync: ' + (data.error || 'Unknown error'));
+                        showMessage('同步失败: ' + (data.error || '未知错误'), 'error');
                     }
                 });
         }
         
         function abortSync() {
-            fetch('/api/sync/abort', {method: 'POST'})
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        addLogEntry('[INFO] Sync aborted');
-                    }
-                });
+            if (confirm('确定要中止正在进行的同步任务吗？')) {
+                fetch('/api/sync/abort', {method: 'POST'})
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            addLogEntry('[信息] 同步已中止');
+                            showMessage('同步已中止', 'warning');
+                        }
+                    });
+            }
         }
         
         function loadConfig() {
@@ -497,11 +613,19 @@
                     document.getElementById('uploadConcurrency').value = config.upload?.concurrency || 3;
                     document.getElementById('uploadOverwritePolicy').value = config.upload?.overwrite_policy || 'skip';
                     document.getElementById('uploadRetryCount').value = config.upload?.retry_count || 3;
+                    document.getElementById('uploadTimeout').value = config.upload?.timeout_seconds || 300;
                     
                     document.getElementById('scheduleEnabled').checked = config.sync?.schedule_enabled || false;
                     document.getElementById('scheduleCron').value = config.sync?.schedule_cron || '0 3 * * *';
+                    document.getElementById('syncBwlimit').value = config.sync?.bwlimit || '';
+                    document.getElementById('syncSnapshotTtl').value = config.sync?.snapshot_ttl_hours || 24;
+                    
+                    document.getElementById('logLevel').value = config.log?.level || 'INFO';
+                    document.getElementById('logRetainDays').value = config.log?.retain_days || 7;
+                    
+                    showMessage('配置加载成功', 'success');
                 })
-                .catch(err => console.error('Load config error:', err));
+                .catch(err => showMessage('加载配置失败: ' + err.message, 'error'));
         }
         
         function saveConfig() {
@@ -520,13 +644,25 @@
                 upload: {
                     concurrency: parseInt(document.getElementById('uploadConcurrency').value),
                     overwrite_policy: document.getElementById('uploadOverwritePolicy').value,
-                    retry_count: parseInt(document.getElementById('uploadRetryCount').value)
+                    retry_count: parseInt(document.getElementById('uploadRetryCount').value),
+                    timeout_seconds: parseInt(document.getElementById('uploadTimeout').value)
                 },
                 sync: {
                     schedule_enabled: document.getElementById('scheduleEnabled').checked,
-                    schedule_cron: document.getElementById('scheduleCron').value
+                    schedule_cron: document.getElementById('scheduleCron').value,
+                    bwlimit: document.getElementById('syncBwlimit').value,
+                    snapshot_ttl_hours: parseInt(document.getElementById('syncSnapshotTtl').value)
+                },
+                log: {
+                    level: document.getElementById('logLevel').value,
+                    retain_days: parseInt(document.getElementById('logRetainDays').value)
                 }
             };
+            
+            // 如果密码框为空，删除password字段以保持原密码
+            if (!config.webdav.password) {
+                delete config.webdav.password;
+            }
             
             fetch('/api/config', {
                 method: 'POST',
@@ -536,20 +672,79 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert('Configuration saved successfully');
+                        showMessage('配置保存成功', 'success');
+                        // 清空密码框
+                        document.getElementById('webdavPassword').value = '';
+                        // 重新加载配置以获取最新状态
                         loadConfig();
                     } else {
-                        alert('Failed to save config: ' + (data.error || 'Unknown error'));
+                        showMessage('保存失败: ' + (data.error || '未知错误'), 'error');
                     }
                 });
+        }
+        
+        function resetConfig() {
+            if (confirm('确定要重置所有配置为默认值吗？此操作不可撤销。')) {
+                const defaultConfig = {
+                    webdav: {
+                        url: '',
+                        username: '',
+                        password: '',
+                        remote_path: '/'
+                    },
+                    monitor: {
+                        local_path: '',
+                        extensions: ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm'],
+                        ignore_dirs: ['@eaDir', '@Recycle', 'tmp', 'metadata']
+                    },
+                    upload: {
+                        concurrency: 3,
+                        overwrite_policy: 'skip',
+                        retry_count: 3,
+                        timeout_seconds: 300
+                    },
+                    sync: {
+                        schedule_enabled: false,
+                        schedule_cron: '0 3 * * *',
+                        bwlimit: '',
+                        snapshot_ttl_hours: 24
+                    },
+                    log: {
+                        level: 'INFO',
+                        retain_days: 7
+                    }
+                };
+                
+                fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(defaultConfig)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showMessage('配置已重置为默认值', 'success');
+                            loadConfig();
+                        } else {
+                            showMessage('重置失败: ' + (data.error || '未知错误'), 'error');
+                        }
+                    });
+            }
         }
         
         function testWebDAV() {
             const config = {
                 url: document.getElementById('webdavUrl').value,
                 username: document.getElementById('webdavUsername').value,
-                password: document.getElementById('webdavPassword').value
+                password: document.getElementById('webdavPassword').value || '********'
             };
+            
+            if (!config.url) {
+                showMessage('请先填写 WebDAV 服务器地址', 'warning');
+                return;
+            }
+            
+            showMessage('正在测试连接...', 'info');
             
             fetch('/api/test/webdav', {
                 method: 'POST',
@@ -559,15 +754,22 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert('WebDAV connection successful!');
+                        showMessage('连接测试成功！', 'success');
                     } else {
-                        alert('WebDAV connection failed: ' + data.message);
+                        showMessage('连接测试失败: ' + data.message, 'error');
                     }
                 });
         }
         
         function testDirectory() {
             const path = document.getElementById('monitorLocalPath').value;
+            if (!path) {
+                showMessage('请先填写本地目录路径', 'warning');
+                return;
+            }
+            
+            showMessage('正在测试目录...', 'info');
+            
             fetch('/api/test/dir', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -576,29 +778,54 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert('Directory is accessible. Writable: ' + (data.writable ? 'Yes' : 'No'));
+                        let msg = '目录可访问。';
+                        if (data.writable) {
+                            msg += ' 目录可写。';
+                        } else {
+                            msg += ' 目录只读。';
+                        }
+                        showMessage(msg, 'success');
                     } else {
-                        alert('Directory test failed: ' + data.message);
+                        showMessage('目录测试失败: ' + data.message, 'error');
                     }
                 });
         }
         
         function browseLocal() {
             const currentPath = document.getElementById('monitorLocalPath').value || '/';
-            // Simple prompt for browsing (can be enhanced)
-            const newPath = prompt('Enter directory path:', currentPath);
+            const newPath = prompt('请输入目录路径:', currentPath);
             if (newPath) {
                 document.getElementById('monitorLocalPath').value = newPath;
+                testDirectory();
             }
         }
         
-        // Initialize
+        function showMessage(message, type) {
+            // 创建临时提示
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info')}`;
+            alertDiv.textContent = message;
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '1000';
+            alertDiv.style.maxWidth = '300px';
+            alertDiv.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+        
+        // 初始化
         connectSSE();
         statusInterval = setInterval(updateStatus, 2000);
         loadConfig();
         updateStatus();
         
-        // Cleanup on page unload
+        // 页面关闭时清理
         window.addEventListener('beforeunload', function() {
             if (eventSource) {
                 eventSource.close();
