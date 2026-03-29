@@ -1,0 +1,29 @@
+{
+  "webdav": {
+    "url": "https://example.com/dav/",
+    "username": "your_username",
+    "password": "your_password",
+    "remote_path": "/"
+  },
+  "monitor": {
+    "local_path": "/data/media",
+    "extensions": ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "m2ts", "3gp", "ogv", "rmvb", "vob", "iso"],
+    "ignore_dirs": ["@eaDir", "@Recycle", "tmp", "metadata", ".DS_Store", "Thumbs.db"]
+  },
+  "upload": {
+    "concurrency": 3,
+    "overwrite_policy": "skip",
+    "retry_count": 3,
+    "timeout_seconds": 300
+  },
+  "sync": {
+    "schedule_enabled": false,
+    "schedule_cron": "0 3 * * *",
+    "bwlimit": "",
+    "snapshot_ttl_hours": 24
+  },
+  "log": {
+    "level": "INFO",
+    "retain_days": 7
+  }
+}
