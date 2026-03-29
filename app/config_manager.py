@@ -70,6 +70,17 @@ class ConfigManager:
         try:
             if config is None:
                 config = self.config
+            
+            # 加密密码
+            if 'webdav' in config and 'password' in config['webdav']:
+                password = config['webdav']['password']
+                # 如果密码不是加密格式，则加密
+                if password and not password.startswith('XXXX') and not password.startswith('BASE64_'):
+                    from app.rclone_client import rclone_client
+                    encrypted = rclone_client.obscure_password(password)
+                    config['webdav']['password'] = encrypted
+                    logger.info("Password encrypted before saving")
+            
             os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
             with open(self.config_path, 'w') as f:
                 json.dump(config, f, indent=2)
@@ -87,14 +98,22 @@ class ConfigManager:
             if not self.config.get('monitor', {}).get('local_path'):
                 missing.append('monitor.local_path')
             if not os.path.exists(self.config.get('monitor', {}).get('local_path', '')):
-                missing.append('monitor.local_path (path does not exist)')
+                missing.append('monitor.local_path (路径不存在)')
         except Exception as e:
             logger.error(f"Config validation error: {e}")
-            missing.append(f"validation error: {str(e)}")
+            missing.append(f"验证错误: {str(e)}")
         return missing
     
     def get_webdav_config(self) -> Dict:
         return self.config.get('webdav', DEFAULT_CONFIG['webdav']).copy()
+    
+    def get_webdav_password_plain(self) -> str:
+        """获取明文密码（用于显示，实际很少需要）"""
+        encrypted = self.config.get('webdav', {}).get('password', '')
+        if encrypted.startswith('XXXX') or encrypted.startswith('BASE64_'):
+            from app.rclone_client import rclone_client
+            return rclone_client.reveal_password(encrypted)
+        return encrypted
     
     def get_monitor_config(self) -> Dict:
         return self.config.get('monitor', DEFAULT_CONFIG['monitor']).copy()
@@ -107,6 +126,18 @@ class ConfigManager:
     
     def update_config(self, updates: Dict) -> bool:
         try:
+            # 处理密码加密
+            if 'webdav' in updates and 'password' in updates['webdav']:
+                password = updates['webdav']['password']
+                # 如果密码是占位符，跳过
+                if password == '********':
+                    # 保持原密码
+                    if 'webdav' in self.config:
+                        updates['webdav']['password'] = self.config['webdav'].get('password', '')
+                elif password and not password.startswith('XXXX') and not password.startswith('BASE64_'):
+                    from app.rclone_client import rclone_client
+                    updates['webdav']['password'] = rclone_client.obscure_password(password)
+            
             for section, values in updates.items():
                 if section in self.config and isinstance(values, dict):
                     self.config[section].update(values)
