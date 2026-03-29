@@ -185,27 +185,41 @@ def stream_logs():
 
 @app.route('/api/test/webdav', methods=['POST'])
 def test_webdav():
-    """测试 WebDAV 连接 - 接收明文密码，加密后测试"""
+    """测试 WebDAV 连接"""
     try:
-        webdav_config = request.json
+        data = request.json
+        url = data.get('url')
+        username = data.get('username', '')
+        password = data.get('password', '')
         
-        # 获取密码
-        password = webdav_config.get('password', '')
+        # 验证必要字段
+        if not url:
+            return jsonify({"success": False, "message": "URL 不能为空"})
         
-        # 如果密码是占位符，使用已保存的加密密码
+        # 如果密码是占位符，使用已保存的密码
         if password == '********':
             saved_config = config_manager.get_webdav_config()
             password = saved_config.get('password', '')
-            webdav_config['password'] = password
-        elif password and not password.startswith('XXXX') and not password.startswith('BASE64_'):
-            # 明文密码，先加密再测试
-            from app.rclone_client import rclone_client
-            encrypted_password = rclone_client.obscure_password(password)
-            webdav_config['password'] = encrypted_password
-            logger.info("Password encrypted for connection test")
         
-        success, message = rclone_client.test_connection(webdav_config)
-        return jsonify({'success': success, 'message': message})
+        # 构建测试配置
+        test_config = {
+            'url': url,
+            'username': username,
+            'password': password
+        }
+        
+        success, message, debug = rclone_client.test_connection(test_config)
+        
+        result = {"success": success, "message": message}
+        
+        # 如果失败且提供了调试信息，添加到返回中
+        if not success and debug:
+            result["debug"] = debug
+            # 记录调试信息到日志
+            logger.debug(f"WebDAV test debug: {debug}")
+        
+        return jsonify(result)
+        
     except Exception as e:
         logger.error(f"Test WebDAV error: {e}")
         return jsonify({'success': False, 'message': f'测试失败: {str(e)}'}), 500
