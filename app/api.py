@@ -1,7 +1,9 @@
 import os
-import logging
 import json
 import time
+import queue
+import logging
+import threading
 import requests
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context
 from app import config, database, uploader, watcher, syncer, scheduler
@@ -10,23 +12,32 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, template_folder="templates")
 
 _sse_clients = []
-_sse_lock = __import__("threading").Lock()
+_sse_lock = threading.Lock()
 _log_buffer = []
-_log_buffer_max = 500
+_LOG_BUFFER_MAX = 500
 
 
 class SSELogHandler(logging.Handler):
     def emit(self, record):
-        msg = self.format(record)
-        entry = {
-            "time": time.strftime("%H:%M:%S"),
-            "level": record.levelname,
-            "message": msg,
-        }
-        _log_buffer.append(entry)
-        if len(_log_buffer) > _log_buffer_max:
-            _log_buffer.pop(0)
-        _push_sse("log", entry)
+        try:
+            msg = self.format(record)
+            entry = {
+                "time": time.strftime("%H:%M:%S"),
+                "level": record.levelname,
+                "message": msg,
+            }
+            _log_buffer.append(entry)
+            if len(_log_buffer) > _LOG_BUFFER_MAX:
+                _log_buffer.pop(0)
+            _push_sse("log", entry)
+        except Exception:
+            pass
+
+
+def setup_logging():
+    handler = SSELogHandler()
+    handler.setFormatter(logging.Formatter("%(name)s — %(message)s"))
+    logging.getLogger().addHandler(handler)
 
 
 def _push_sse(event, data):
@@ -42,26 +53,14 @@ def _push_sse(event, data):
             _sse_clients.remove(q)
 
 
-def setup_logging():
-    import queue as _queue
-    handler = SSELogHandler()
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    logging.getLogger().addHandler(handler)
-
-
-# ── Pages ──────────────────────────────────────────────────────────────
-
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-# ── SSE stream ─────────────────────────────────────────────────────────
-
 @app.route("/api/stream")
 def stream():
-    import queue as _queue
-    q = _queue.Queue(maxsize=200)
+    q = queue.Queue(maxsize=200)
     with _sse_lock:
         _sse_clients.append(q)
 
@@ -84,14 +83,9 @@ def stream():
     return Response(
         stream_with_context(generate()),
         mimetype="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
-
-# ── Status ─────────────────────────────────────────────────────────────
 
 @app.route("/api/status")
 def api_status():
@@ -99,14 +93,13 @@ def api_status():
     queue_info = uploader.get_queue_snapshot()
     last_sync = database.get_last_sync_task()
     snap_age = database.get_snapshot_age_hours()
-
     return jsonify({
         "monitor_running": watcher.is_running(),
         "sync_running": syncer.is_running(),
         "stats": stats,
         "queue": queue_info,
         "last_sync": last_sync,
-        "snapshot_age_hours": round(snap_age, 1) if snap_age else None,
+        "snapshot_age_hours": round(snap_age, 1) if snap_age is not None else None,
     })
 
 
@@ -117,11 +110,9 @@ def api_logs():
     if level == "error":
         logs = [l for l in logs if l["level"] in ("ERROR", "WARNING")]
     elif level == "success":
-        logs = [l for l in logs if "Done" in l["message"] or "success" in l["message"].lower()]
+        logs = [l for l in logs if "Done" in l["message"]]
     return jsonify(logs)
 
-
-# ── Config ─────────────────────────────────────────────────────────────
 
 @app.route("/api/config", methods=["GET"])
 def api_config_get():
@@ -136,26 +127,18 @@ def api_config_save():
     data = request.get_json(force=True)
     if not data:
         return jsonify({"ok": False, "error": "No data"}), 400
-
     if "webdav_password" in data and data["webdav_password"].startswith("•"):
         data.pop("webdav_password")
-
     config.update(data)
-
-    was_monitor = watcher.is_running()
     if "monitor_enabled" in data:
-        if data["monitor_enabled"] and not was_monitor:
+        if data["monitor_enabled"] and not watcher.is_running():
             watcher.start()
-        elif not data["monitor_enabled"] and was_monitor:
+        elif not data["monitor_enabled"] and watcher.is_running():
             watcher.stop()
-
     if "scheduler_enabled" in data or "scheduler_time" in data:
         scheduler.reschedule()
-
     return jsonify({"ok": True})
 
-
-# ── Connection tests ────────────────────────────────────────────────────
 
 @app.route("/api/test/webdav", methods=["POST"])
 def api_test_webdav():
@@ -174,9 +157,9 @@ def api_test_webdav():
         )
         if resp.status_code in (200, 207):
             return jsonify({"ok": True})
-        return jsonify({"ok": False, "error": f"HTTP {resp.status_code}"}), 200
+        return jsonify({"ok": False, "error": f"HTTP {resp.status_code}"})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 200
+        return jsonify({"ok": False, "error": str(e)})
 
 
 @app.route("/api/test/localdir", methods=["POST"])
@@ -189,11 +172,9 @@ def api_test_localdir():
         return jsonify({"ok": False, "error": "Directory not found"})
     if not os.access(path, os.R_OK):
         return jsonify({"ok": False, "error": "No read permission"})
-    count = sum(1 for _, _, files in os.walk(path) for f in files)
+    count = sum(len(files) for _, _, files in os.walk(path))
     return jsonify({"ok": True, "file_count": count})
 
-
-# ── Monitor control ─────────────────────────────────────────────────────
 
 @app.route("/api/monitor/start", methods=["POST"])
 def api_monitor_start():
@@ -211,8 +192,6 @@ def api_monitor_stop():
     return jsonify({"ok": True})
 
 
-# ── Sync control ────────────────────────────────────────────────────────
-
 @app.route("/api/sync/start", methods=["POST"])
 def api_sync_start():
     if syncer.is_running():
@@ -227,17 +206,14 @@ def api_sync_abort():
     return jsonify({"ok": True})
 
 
-# ── Queue control ───────────────────────────────────────────────────────
-
 @app.route("/api/queue/clear", methods=["POST"])
 def api_queue_clear():
-    import queue as _queue
     cleared = 0
     while True:
         try:
             uploader._task_queue.get_nowait()
             cleared += 1
-        except _queue.Empty:
+        except queue.Empty:
             break
     with uploader._in_queue_lock:
         uploader._in_queue_set.clear()
