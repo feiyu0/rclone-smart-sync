@@ -76,9 +76,12 @@ def get_status():
 def get_config():
     try:
         config = config_manager.config.copy()
-        # Hide password
+        # 隐藏密码
         if 'webdav' in config and 'password' in config['webdav']:
-            config['webdav']['password'] = '********'
+            if config['webdav']['password']:
+                config['webdav']['password'] = '********'
+            else:
+                config['webdav']['password'] = ''
         return jsonify(config)
     except Exception as e:
         logger.error(f"Get config error: {e}")
@@ -91,8 +94,8 @@ def save_config():
         if config_manager.update_config(new_config):
             # Reload scheduler if config changed
             scheduler_manager.reload_job()
-            return jsonify({'success': True})
-        return jsonify({'success': False, 'error': 'Failed to save config'}), 500
+            return jsonify({'success': True, 'message': '配置已保存'})
+        return jsonify({'success': False, 'error': '保存配置失败'}), 500
     except Exception as e:
         logger.error(f"Save config error: {e}")
         return jsonify({'error': str(e)}), 500
@@ -103,13 +106,13 @@ def start_monitor():
     try:
         from app.watcher import Watcher
         if monitor_running:
-            return jsonify({'success': False, 'error': 'Monitor already running'}), 400
+            return jsonify({'success': False, 'error': '监控已在运行中'}), 400
         
         watcher = Watcher(uploader.add_task)
         if watcher.start():
             monitor_running = True
-            return jsonify({'success': True})
-        return jsonify({'success': False, 'error': 'Failed to start monitor'}), 500
+            return jsonify({'success': True, 'message': '监控已启动'})
+        return jsonify({'success': False, 'error': '启动监控失败'}), 500
     except Exception as e:
         logger.error(f"Start monitor error: {e}")
         return jsonify({'error': str(e)}), 500
@@ -121,7 +124,7 @@ def stop_monitor():
         if watcher:
             watcher.stop()
         monitor_running = False
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': '监控已停止'})
     except Exception as e:
         logger.error(f"Stop monitor error: {e}")
         return jsonify({'error': str(e)}), 500
@@ -130,7 +133,7 @@ def stop_monitor():
 def trigger_full_sync():
     try:
         if syncer.running:
-            return jsonify({'success': False, 'error': 'Sync already running'}), 400
+            return jsonify({'success': False, 'error': '同步任务已在运行中'}), 400
         
         # Run in background thread
         def run_sync():
@@ -139,7 +142,7 @@ def trigger_full_sync():
         thread = threading.Thread(target=run_sync, daemon=True)
         thread.start()
         
-        return jsonify({'success': True, 'task_id': syncer.current_task_id})
+        return jsonify({'success': True, 'task_id': syncer.current_task_id, 'message': '全量同步已开始'})
     except Exception as e:
         logger.error(f"Trigger sync error: {e}")
         return jsonify({'error': str(e)}), 500
@@ -148,8 +151,8 @@ def trigger_full_sync():
 def abort_sync():
     try:
         if syncer.abort_sync():
-            return jsonify({'success': True})
-        return jsonify({'success': False, 'error': 'No sync running'}), 400
+            return jsonify({'success': True, 'message': '同步已中止'})
+        return jsonify({'success': False, 'error': '没有正在运行的同步任务'}), 400
     except Exception as e:
         logger.error(f"Abort sync error: {e}")
         return jsonify({'error': str(e)}), 500
@@ -181,24 +184,29 @@ def stream_logs():
 def test_webdav():
     try:
         webdav_config = request.json
+        # 如果密码是占位符，使用已保存的密码
+        if webdav_config.get('password') == '********':
+            saved_config = config_manager.get_webdav_config()
+            webdav_config['password'] = saved_config.get('password', '')
+        
         success, message = rclone_client.test_connection(webdav_config)
         return jsonify({'success': success, 'message': message})
     except Exception as e:
         logger.error(f"Test WebDAV error: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': f'测试失败: {str(e)}'}), 500
 
 @app.route('/api/test/dir', methods=['POST'])
 def test_directory():
     try:
         path = request.json.get('path')
         if not path:
-            return jsonify({'success': False, 'message': 'No path provided'}), 400
+            return jsonify({'success': False, 'message': '未提供路径'}), 400
         
         if not os.path.exists(path):
-            return jsonify({'success': False, 'message': f'Path does not exist: {path}'}), 400
+            return jsonify({'success': False, 'message': f'路径不存在: {path}'}), 400
         
         if not os.path.isdir(path):
-            return jsonify({'success': False, 'message': f'Not a directory: {path}'}), 400
+            return jsonify({'success': False, 'message': f'不是目录: {path}'}), 400
         
         # Check write permission
         test_file = os.path.join(path, '.write_test')
@@ -212,7 +220,7 @@ def test_directory():
         
         return jsonify({
             'success': True,
-            'message': 'Directory is accessible',
+            'message': '目录可访问',
             'writable': writable
         })
     except Exception as e:
@@ -224,7 +232,7 @@ def browse_local():
     try:
         path = request.args.get('path', '/')
         if not os.path.exists(path):
-            return jsonify({'error': 'Path does not exist'}), 404
+            return jsonify({'error': '路径不存在'}), 404
         
         items = []
         try:
@@ -237,7 +245,7 @@ def browse_local():
                     'size': os.path.getsize(item_path) if os.path.isfile(item_path) else 0
                 })
         except PermissionError:
-            return jsonify({'error': 'Permission denied'}), 403
+            return jsonify({'error': '权限被拒绝'}), 403
         
         items.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
         return jsonify({
